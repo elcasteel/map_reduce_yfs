@@ -72,6 +72,9 @@
 
 #include "jsl_log.h"
 #include "gettime.h"
+#include <map>
+
+using namespace std;
 
 const rpcc::TO rpcc::to_max = { 120000 };
 const rpcc::TO rpcc::to_min = { 1000 };
@@ -546,7 +549,7 @@ rpcs::dispatch(djob_t *j)
 				conns_[h.clt_nonce] = c;
 			}
 		}
-
+                
 		stat = checkduplicate_and_update(h.clt_nonce, h.xid,
                                                  h.xid_rep, &b1, &sz1);
 	} else {
@@ -556,6 +559,7 @@ rpcs::dispatch(djob_t *j)
 
 	switch (stat){
 		case NEW: // new request
+                        cout << "\n new request.";
 			if(counting_){
 				updatestat(proc);
 			}
@@ -585,7 +589,7 @@ rpcs::dispatch(djob_t *j)
 					c->incref();
 				}
 			}
-
+                        cout << "sending reply";
 			c->send(b1, sz1);
 			if(h.clt_nonce == 0){
 				// reply is not added to at-most-once window, free it
@@ -593,11 +597,14 @@ rpcs::dispatch(djob_t *j)
 			}
 			break;
 		case INPROGRESS: // server is working on this request
+                        cout << "\n in progress request.";
 			break;
 		case DONE: // duplicate and we still have the response
+                        cout << "\n Its a duplicate request.";
 			c->send(b1, sz1);
 			break;
 		case FORGOTTEN: // very old request and we don't have the response anymore
+                        cout << "\n forgotten";
 			jsl_log(JSL_DBG_2, "rpcs::dispatch: very old request %u from %u\n", 
 					h.xid, h.clt_nonce);
 			rh.ret = rpc_const::atmostonce_failure;
@@ -622,7 +629,46 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
 
-        // You fill this in for Lab 1.
+       cout << "\nchecking for duplication on " << clt_nonce << " for request " << xid;
+       
+       // check if we forgot it
+       if(xid<xid_rep) return FORGOTTEN; 
+
+        list<reply_t>& lst = reply_window_[clt_nonce];
+        list<reply_t>::iterator i;
+       //look for xid
+        reply_t current = NULL;
+        cout << "\n iterating over list";
+        for(i = lst.begin(); i!= lst.end(); ++i)
+        {
+          current = *i;
+          if(current.xid != xid) 
+            {
+              continue;
+            }
+          cout << "\n   found "<<xid << " with bool "<<current.cb_present;
+          //cout << "\n    string is " << current.buf;
+          //we have the reply in memory
+          if(current.cb_present) return INPROGRESS;
+          else 
+             {
+                // return data
+                sz = &(i->sz);
+                b = &(i->buf);
+                return DONE;
+              }
+
+        }
+       
+       //clear old replies
+       
+
+        // anyway this means we have a new reply
+        reply_t new_reply(xid);
+        new_reply.cb_present = true;
+        // store it
+        reply_window_[clt_nonce].push_front(new_reply);
+
 	return NEW;
 }
 
@@ -637,6 +683,45 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
         // You fill this in for Lab 1.
+       
+       //store reply
+        list<reply_t> lst = reply_window_[clt_nonce];
+        list<reply_t>::iterator i;
+       //look for xid
+        reply_t current=NULL;
+        for(i = lst.begin(); i!= lst.end(); ++i)
+        {
+          current = *i;
+          if(current.xid == xid)
+            {
+              //lst.erase(current);
+              (*i).cb_present = false;
+              (*i).buf = b;
+              (*i).sz = sz;
+              //lst.push_back(current);
+              cout << "\n  reply added for " << xid << " with bool "<< (*i).cb_present << " and size "<< sz;
+              break;
+            }
+         }
+       //for debuggin purposes to see if updates are made
+        for(i = lst.begin(); i!= lst.end(); ++i)       
+        {     
+          current = *i;
+          if(current.xid == xid)
+            {
+              //lst.erase(current);    
+              //current.cb_present = false;   
+              //current.buf = b;
+              //current.sz = sz;   
+              //lst.push_back(current);
+              cout << "\n  reply added for " << xid << " with bool "<<current.cb_present << " and size "<<current.sz;
+              break;
+            }
+         }
+       
+       
+      
+
 }
 
 void

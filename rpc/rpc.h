@@ -264,6 +264,7 @@ class rpcs : public chanmgr {
 			buf = NULL;
 			sz = 0;
 		}
+               
 		unsigned int xid;
 		bool cb_present;
 		char *buf;
