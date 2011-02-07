@@ -655,8 +655,8 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
           else 
              {
                 // return data
-                sz = &(i->sz);
-                b = &(i->buf);
+                *sz = i->sz;
+                *b = i->buf;
                 printf("\n b is %s",(i->buf));
                 return DONE;
               }
