@@ -474,6 +474,7 @@ rpcs::updatestat(unsigned int proc)
 void
 rpcs::dispatch(djob_t *j)
 {
+        cout << "\n\ndispatching";
 	connection *c = j->conn;
 	unmarshall req(j->buf, j->sz);
 	delete j;
@@ -602,6 +603,7 @@ rpcs::dispatch(djob_t *j)
 		case DONE: // duplicate and we still have the response
                         cout << "\n Its a duplicate request.";
 			c->send(b1, sz1);
+                        cout << "\n sent stored reply.";
 			break;
 		case FORGOTTEN: // very old request and we don't have the response anymore
                         cout << "\n forgotten";
@@ -655,13 +657,26 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
                 // return data
                 sz = &(i->sz);
                 b = &(i->buf);
+                printf("\n b is %s",(i->buf));
                 return DONE;
               }
 
         }
        
        //clear old replies
-       
+       i = lst.begin();
+       while(i != lst.end())
+       {
+         if(i->xid < xid_rep)
+           {
+              lst.erase(i++);
+           }
+         else
+          {
+             ++i;
+          }
+
+       }
 
         // anyway this means we have a new reply
         reply_t new_reply(xid);
@@ -683,9 +698,9 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
         // You fill this in for Lab 1.
-       
+       printf("\nb should be %s",b);
        //store reply
-        list<reply_t> lst = reply_window_[clt_nonce];
+        list<reply_t>& lst = reply_window_[clt_nonce];
         list<reply_t>::iterator i;
        //look for xid
         reply_t current=NULL;
@@ -703,7 +718,7 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
               break;
             }
          }
-       //for debuggin purposes to see if updates are made
+       //for debugging purposes to see if updates are made
         for(i = lst.begin(); i!= lst.end(); ++i)       
         {     
           current = *i;
