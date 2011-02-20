@@ -18,6 +18,8 @@
 #include "lang/verify.h"
 #include "yfs_client.h"
 
+using namespace std;
+
 int myid;
 yfs_client *yfs;
 
@@ -86,11 +88,58 @@ fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set
     printf("   fuseserver_setattr set size to %zu\n", attr->st_size);
     struct stat st;
     // You fill this in for Lab 2
-#if 0
+    if(getattr(ino,st)!=yfs_client::OK){
+       printf("\n failed to getattr in setattr");
+       fuse_reply_err(req, ENOSYS);
+       return;   
+    }
+
+    string buf;
+    if(yfs->get(ino,buf)!=yfs_client::OK){
+       printf("\n failed to get buffer from yfs client.");
+       fuse_reply_err(req, ENOSYS);
+       return;
+    }
+
+    if(st.st_size != buf.length()){
+      printf("\n size attribute was off in the yfs_client (setattr)");
+     }
+    
+    if(st.st_size>(attr->st_size))
+    {
+      //need to truncate
+      int trunc = st.st_size-(attr->st_size);
+      printf("\n truncating file size by %d",trunc);
+      buf = buf.substr(0,attr->st_size);
+
+    }else if(st.st_size<(attr->st_size)){
+      //need to pad
+      int padNum = (attr->st_size)-st.st_size;
+      printf("\n padding with %d bytes",padNum);
+      int i;
+      for(i=0;i<padNum;i++)
+      {
+         buf.append(" ");
+      }
+
+    }
+    //else we need do nothing
+    if(yfs->put(ino,buf)!=yfs_client::OK){
+       printf("\n unable to put string back in yfs");
+       fuse_reply_err(req, ENOSYS);
+       return;
+    }
+   //get attr back from the source
+   if(getattr(ino,st)!=yfs_client::OK){
+       printf("\n failed to getattr in setattr (2)");
+       fuse_reply_err(req, ENOSYS);
+       return;
+    }
+
+
     fuse_reply_attr(req, &st, 0);
-#else
-    fuse_reply_err(req, ENOSYS);
-#endif
+
+
   } else {
     fuse_reply_err(req, ENOSYS);
   }
@@ -100,12 +149,26 @@ void
 fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
       off_t off, struct fuse_file_info *fi)
 {
+  printf("\nReading file with inode %lu",ino);
   // You fill this in for Lab 2
-#if 0
-  fuse_reply_buf(req, buf, size);
-#else
-  fuse_reply_err(req, ENOSYS);
-#endif
+  string buf;
+
+  if(yfs->get(ino,buf)!=yfs_client::OK){
+    printf("\n failed to get from yfs client in fuse read");
+    fuse_reply_err(req, ENOSYS);
+    return;
+  }
+  printf("\n yfs client returned string %s",buf.c_str());  
+  printf("\noffset is %d and size is %d",off,size);
+
+  const char *b = buf.substr(off,size).c_str();
+  //memcpy(b,buf.data()+off,size);
+
+  fuse_reply_buf(req, b, size);
+  printf("\nRead file, returned: %s",b);
+  //free(b);
+  return;
+
 }
 
 void
@@ -113,24 +176,80 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
   const char *buf, size_t size, off_t off,
   struct fuse_file_info *fi)
 {
+  printf("\nWriting to file %lu",ino);
   // You fill this in for Lab 2
-#if 0
-  fuse_reply_write(req, bytes_written);
-#else
-  fuse_reply_err(req, ENOSYS);
-#endif
+  string s;
+  if(yfs->get(ino,s)!=yfs_client::OK){
+   printf("\n failed to get string from yfs client");
+   fuse_reply_err(req, ENOSYS);
+   return;
+  }
+
+  
+  string end;
+  int length = s.length();
+  //writing past length
+  if(off>length){
+    s.append((off-length),'\0'); 
+    s.append(buf,size);
+
+  }else{
+    //if theres leftover string
+    if(off + size < length)
+       end = s.substr(off+size,length);
+    s = s.substr(0,off);
+    s = s.append(buf,size);
+    if(off+size < length)
+        s.append(end);
+    }
+  printf("\n writing size %d string %s to file",size,s.c_str());
+
+  if(yfs->put(ino,s)!=yfs_client::OK){
+     printf("\n failed to write to yfs client");
+     fuse_reply_err(req, ENOSYS);
+     return;
+  }
+  
+
+  fuse_reply_write(req, size);
+
 }
 
 yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
      mode_t mode, struct fuse_entry_param *e)
 {
+  printf("\nCreating file in fuse with name %s under parent %lu",name,parent);
+  
   // In yfs, timeouts are always set to 0.0, and generations are always set to 0
   e->attr_timeout = 0.0;
   e->entry_timeout = 0.0;
   e->generation = 0;
   // You fill this in for Lab 2
-  return yfs_client::NOENT;
+  //fill in e->ino (inode) (unsigned long)
+  yfs_client::inum ino;
+  yfs_client::inum yfs_parent = parent;
+
+  int ret = yfs->create(yfs_parent,name,ino);
+  if(ret!=yfs_client::OK){
+    printf("\nfuse failed to create file in create helper."); 
+    return ret;
+  }
+  
+
+  //fill in e->attr which is a stat struct with getattr call
+  struct stat st;
+  ret = getattr(ino,st);
+  if(ret!=yfs_client::OK){
+    printf("\nfuse failed to getattr in create helper.");
+    return ret;
+  }
+  //fill in data
+  e->ino = ino;
+  e->attr = st;
+  
+  printf("\nFile created with inode %llu",ino);
+  return yfs_client::OK;
 }
 
 void
@@ -179,6 +298,23 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   // Look up the file named `name' in the directory referred to by
   // `parent' in YFS. If the file was found, initialize e.ino and
   // e.attr appropriately.
+  
+  yfs_client::inum ino;
+  if(yfs->lookup(parent,name,ino)!=yfs_client::OK){
+     printf("\nLookup failed in fuse for name %s and parent id %lu",name,parent);
+  }else{
+     printf("\nLookup in fuse found id %llu",ino);
+     found = true;
+     e.ino = ino;
+     struct stat st;
+     if(getattr(ino,st)!=yfs_client::OK){
+         printf("\nfailed to getattr in fuse lookup");
+         found = false;
+     }else{
+         printf("\nLookup in fuse succeeded, found attributes.");
+         e.attr = st;
+     }
+  }
 
   if (found)
     fuse_reply_entry(req, &e);
@@ -234,7 +370,17 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
   // You fill this in for Lab 2
   // Ask the yfs_client for the file names / i-numbers
   // in directory inum, and call dirbuf_add() for each.
+  vector<yfs_client::dirent> dir_vector;
+  if(yfs->readdir(inum,dir_vector)==yfs_client::OK){
+     vector<yfs_client::dirent>::iterator it;
+     for(it = dir_vector.begin();it!=dir_vector.end();++it){
 
+        yfs_client::dirent tmp = *it;
+        dirbuf_add(&b,tmp.name.c_str(),tmp.inum);
+
+     }
+
+  }
 
   reply_buf_limited(req, b.p, b.size, off, size);
   free(b.p);

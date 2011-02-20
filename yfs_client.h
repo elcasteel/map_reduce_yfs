@@ -5,7 +5,7 @@
 //#include "yfs_protocol.h"
 #include "extent_client.h"
 #include <vector>
-
+using namespace std;
 
 class yfs_client {
   extent_client *ec;
@@ -27,7 +27,7 @@ class yfs_client {
     unsigned long ctime;
   };
   struct dirent {
-    std::string name;
+    string name;
     yfs_client::inum inum;
   };
 
@@ -43,6 +43,12 @@ class yfs_client {
 
   int getfile(inum, fileinfo &);
   int getdir(inum, dirinfo &);
+
+  int create(inum, const char*, inum&);
+  int lookup(inum, const char*, inum&);
+  int readdir(inum,vector<dirent>&);
+  int put(inum,string);
+  int get(inum,string&);
 };
 
 #endif 
