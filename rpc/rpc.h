@@ -267,14 +267,17 @@ class rpcs : public chanmgr {
 	private:
 
 	struct reply_t {
-		reply_t (unsigned int _xid) {
+		reply_t (unsigned int _xid,unsigned int _xid_rep) {
 			xid = _xid;
 			cb_present = false;
 			buf = NULL;
 			sz = 0;
+			xid_rep=_xid_rep;
+			
 		}
                
 		unsigned int xid;
+		unsigned int xid_rep;
 		bool cb_present;
 		char *buf;
 		int sz;

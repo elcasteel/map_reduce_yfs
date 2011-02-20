@@ -47,7 +47,7 @@ getattr(yfs_client::inum inum, struct stat &st)
      st.st_mtime = info.mtime;
      st.st_ctime = info.ctime;
      st.st_size = info.size;
-     printf("   getattr -> %llu\n", info.size);
+     printf("   getattr -> size: %llu\n", info.size);
    } else {
      yfs_client::dirinfo info;
      ret = yfs->getdir(inum, info);
@@ -150,6 +150,8 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
       off_t off, struct fuse_file_info *fi)
 {
   printf("\nReading file with inode %lu",ino);
+  //printf("\noffset is %u and size is %u",off,size);
+  cout << "\noffset is "<<off<<" and size is "<<size;
   // You fill this in for Lab 2
   string buf;
 
@@ -159,14 +161,14 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
     return;
   }
   printf("\n yfs client returned string %s",buf.c_str());  
-  printf("\noffset is %d and size is %d",off,size);
-
-  const char *b = buf.substr(off,size).c_str();
-  //memcpy(b,buf.data()+off,size);
+  //if(size==0) size = buf.length();
+  //const char *b = buf.substr(off,size).c_str();
+  char * b = (char *) malloc(size);
+  memcpy(b,buf.data()+off,size);
 
   fuse_reply_buf(req, b, size);
   printf("\nRead file, returned: %s",b);
-  //free(b);
+  free(b);
   return;
 
 }
@@ -184,13 +186,13 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
    fuse_reply_err(req, ENOSYS);
    return;
   }
-
+  //cout <<"\nGiven size is "<<size<< " and buf size is "<< strlen(buf);
   
   string end;
   int length = s.length();
   //writing past length
   if(off>length){
-    s.append((off-length),'\0'); 
+    s.append((size_t)(off-length),'\0'); 
     s.append(buf,size);
 
   }else{

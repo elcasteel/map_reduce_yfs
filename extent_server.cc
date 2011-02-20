@@ -34,7 +34,7 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
      extent_t tmp;
      tmp.id = id;
      tmp.buf = buf;
-     tmp.attr.size = tmp.buf.size();
+     tmp.attr.size = tmp.buf.length();
      tmp.attr.atime = time(NULL);
      tmp.attr.mtime = time(NULL);
      tmp.attr.ctime = time(NULL);
@@ -42,12 +42,12 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
   }else{
      extent_t tmp = ext_map[id];
      tmp.buf = buf;
-     tmp.attr.size = tmp.buf.size();
+     tmp.attr.size = tmp.buf.length();
      tmp.attr.mtime = time(NULL);
      tmp.attr.ctime = time(NULL);
      ext_map[id] = tmp;
   }
-
+  printf("\nPut in id %llu a string of size %d with %s",id,ext_map[id].attr.size,ext_map[id].buf.c_str());
   return extent_protocol::OK;
 }
 
@@ -61,6 +61,8 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
     return extent_protocol::NOENT;
   }
   buf = ext_map[id].buf;
+  ext_map[id].attr.atime = time(NULL);
+  printf("\nGot from id %llu a string of size %d with %s",id,ext_map[id].attr.size,ext_map[id].buf.c_str());
   return extent_protocol::OK;
 }
 

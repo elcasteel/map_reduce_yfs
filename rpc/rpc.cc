@@ -72,10 +72,13 @@
 
 #include "jsl_log.h"
 #include "gettime.h"
+
 #include "lang/verify.h"
+
 #include <map>
 
 using namespace std;
+
 
 const rpcc::TO rpcc::to_max = { 120000 };
 const rpcc::TO rpcc::to_min = { 1000 };
@@ -661,21 +664,25 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
        cout << "\nchecking for duplication on " << clt_nonce << " for request " << xid;
        
        // check if we forgot it
-       if(xid<xid_rep) return FORGOTTEN; 
+       //if(xid<xid_rep) return FORGOTTEN;
+	unsigned int max_rep = xid_rep; 
 
         list<reply_t>& lst = reply_window_[clt_nonce];
         list<reply_t>::iterator i;
        //look for xid
-        reply_t current = NULL;
-        cout << "\n iterating over list";
+        reply_t current = *lst.begin();
+        //cout << "\n iterating over list";
         for(i = lst.begin(); i!= lst.end(); ++i)
         {
           current = *i;
+	  //check for max rep
+	  if(current.xid_rep > max_rep) max_rep = current.xid_rep;
+
           if(current.xid != xid) 
             {
               continue;
             }
-          cout << "\n   found "<<xid << " with bool "<<current.cb_present;
+          //cout << "\n   found "<<xid << " with bool "<<current.cb_present;
           //cout << "\n    string is " << current.buf;
           //we have the reply in memory
           if(current.cb_present) return INPROGRESS;
@@ -684,11 +691,14 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
                 // return data
                 *sz = i->sz;
                 *b = i->buf;
-                printf("\n b is %s",(i->buf));
+                //printf("\n b is %s",(i->buf));
                 return DONE;
               }
 
         }
+
+	//see if xid < max_rep which means its forgotten
+	if(xid<max_rep) return FORGOTTEN;
        
        //clear old replies
        i = lst.begin();
@@ -706,7 +716,7 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
        }
 
         // anyway this means we have a new reply
-        reply_t new_reply(xid);
+        reply_t new_reply(xid,xid_rep);
         new_reply.cb_present = true;
         // store it
         reply_window_[clt_nonce].push_front(new_reply);
@@ -725,12 +735,12 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
         // You fill this in for Lab 1.
-       printf("\nb should be %s",b);
+       //printf("\nb should be %s",b);
        //store reply
         list<reply_t>& lst = reply_window_[clt_nonce];
         list<reply_t>::iterator i;
        //look for xid
-        reply_t current=NULL;
+        reply_t current=*lst.begin();
         for(i = lst.begin(); i!= lst.end(); ++i)
         {
           current = *i;
@@ -741,7 +751,7 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
               (*i).buf = b;
               (*i).sz = sz;
               //lst.push_back(current);
-              cout << "\n  reply added for " << xid << " with bool "<< (*i).cb_present << " and size "<< sz;
+              //cout << "\n  reply added for " << xid << " with bool "<< (*i).cb_present << " and size "<< sz;
               break;
             }
          }
@@ -756,7 +766,7 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
               //current.buf = b;
               //current.sz = sz;   
               //lst.push_back(current);
-              cout << "\n  reply added for " << xid << " with bool "<<current.cb_present << " and size "<<current.sz;
+              //cout << "\n  reply added for " << xid << " with bool "<<current.cb_present << " and size "<<current.sz;
               break;
             }
          }
