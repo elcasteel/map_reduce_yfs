@@ -179,6 +179,7 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
   struct fuse_file_info *fi)
 {
   printf("\nWriting to file %lu",ino);
+  yfs_client::yfs_lock lock(yfs->lc,ino);  
   // You fill this in for Lab 2
   string s;
   if(yfs->get(ino,s)!=yfs_client::OK){
@@ -221,8 +222,9 @@ yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
      mode_t mode, struct fuse_entry_param *e)
 {
-  printf("\nCreating file in fuse with name %s under parent %lu",name,parent);
   
+  printf("\nCreating file in fuse with name %s under parent %lu",name,parent);
+  yfs_client::yfs_lock lock(yfs->lc,parent);  
   // In yfs, timeouts are always set to 0.0, and generations are always set to 0
   e->attr_timeout = 0.0;
   e->entry_timeout = 0.0;
@@ -232,7 +234,7 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   yfs_client::inum ino;
   yfs_client::inum yfs_parent = parent;
 
-  int ret = yfs->create(yfs_parent,name,ino);
+  int ret = yfs->create(yfs_parent,name,ino,1);
   if(ret!=yfs_client::OK){
     printf("\nfuse failed to create file in create helper."); 
     return ret;
@@ -401,27 +403,73 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
      mode_t mode)
 {
   struct fuse_entry_param e;
+  
+  // You fill this in for Lab 3
+
+  printf("\nCreating directory in fuse with name %s under parent %lu",name,parent);
+
   // In yfs, timeouts are always set to 0.0, and generations are always set to 0
   e.attr_timeout = 0.0;
   e.entry_timeout = 0.0;
   e.generation = 0;
+  
+  //fill in e->ino (inode) (unsigned long)
+  yfs_client::inum ino;
+  yfs_client::inum yfs_parent = parent;
+  //create dir in yfs client
+  int ret = yfs->create(yfs_parent,name,ino,0);
+  if(ret!=yfs_client::OK){
+    printf("\nfuse failed to create a directory in create helper.");
+    fuse_reply_err(req, ENOSYS);
+    return;
+  }
+ 
 
-  // You fill this in for Lab 3
-#if 0
+  //fill in e->attr which is a stat struct with getattr call
+  struct stat st;
+  ret = getattr(ino,st);
+  if(ret!=yfs_client::OK){
+    printf("\nfuse failed to getattr in create helper.");
+    fuse_reply_err(req, ENOSYS);
+    return;
+  }
+  //fill in data
+  e.ino = ino;
+  e.attr = st;
+
+  printf("\nDirectory created with inode %llu",ino);
   fuse_reply_entry(req, &e);
-#else
-  fuse_reply_err(req, ENOSYS);
-#endif
+  
 }
 
 void
 fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
+  printf("\nUnlinking file with name %s and parent %lu",name,parent);
+  yfs_client::yfs_lock lock(yfs->lc,parent);  
+
+  //first lookup inum
+  yfs_client::inum ino;
+  if(yfs->lookup(parent,name,ino)!=yfs_client::OK){
+    printf("\n failed to lookup the file");
+    fuse_reply_err(req, ENOSYS);
+    return;
+  }
+
+  //then call remove on yfs client which also removes from parent
+  if(yfs->remove(parent,ino)!=yfs_client::OK){
+    printf("\n failed to remove from yfs client (fuse)");
+    fuse_reply_err(req, ENOSYS);
+    return;
+  }
+  printf("\n Succesfully unlinked file (fuse)");
+  fuse_reply_err(req, 0);
+
 
   // You fill this in for Lab 3
   // Success:	fuse_reply_err(req, 0);
   // Not found:	fuse_reply_err(req, ENOENT);
-  fuse_reply_err(req, ENOSYS);
+  
 }
 
 void
