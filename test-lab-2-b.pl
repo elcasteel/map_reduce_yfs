@@ -119,7 +119,7 @@ sub checkcontent {
       $c2 .= $_;
     }
     close(F);
-    $files->{$name} eq $c2 or die "content of $f is incorrect\n";
+    $files->{$name} eq $c2 or die "content of $f is incorrect, got \n$c2\n but wanted \n$files->{$name}\n";
 }
 
 sub checknot {

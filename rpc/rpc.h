@@ -269,16 +269,20 @@ class rpcs : public chanmgr {
 	private:
 
 	struct reply_t {
-		reply_t (unsigned int _xid) {
+		reply_t (unsigned int _xid,unsigned int _xid_rep) {
 			xid = _xid;
 			cb_present = false;
 			buf = NULL;
 			sz = 0;
+			xid_rep=_xid_rep;
+			
 		}
+               
 		unsigned int xid;
-		bool cb_present; // whether the reply buffer is valid
-		char *buf;      // the reply buffer
-		int sz;         // the size of reply buffer
+		unsigned int xid_rep;
+		bool cb_present;
+		char *buf;
+		int sz;
 	};
 
 	int port_;

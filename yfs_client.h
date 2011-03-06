@@ -5,13 +5,23 @@
 //#include "yfs_protocol.h"
 #include "extent_client.h"
 #include <vector>
+#include "lock_client.h"
 
 #include "lock_protocol.h"
 #include "lock_client.h"
+#include "lang/verify.h"
+
+using namespace std;
+
 
 class yfs_client {
-  extent_client *ec;
+
  public:
+  extent_client *ec;
+  lock_client *lc;
+
+ 
+
 
   typedef unsigned long long inum;
   enum xxstatus { OK, RPCERR, NOENT, IOERR, EXIST };
@@ -29,13 +39,31 @@ class yfs_client {
     unsigned long ctime;
   };
   struct dirent {
-    std::string name;
+    string name;
     yfs_client::inum inum;
   };
+
+  struct yfs_lock {
+    lock_client *_lc;
+    inum _id;
+    yfs_lock(lock_client *lc,inum id){
+      _lc = lc;
+      _id = id;
+      VERIFY(_lc->acquire(_id)==lock_protocol::OK);
+    }
+    ~yfs_lock(){
+      VERIFY(_lc->release(_id)==lock_protocol::OK);
+    }
+
+  };
+
 
  private:
   static std::string filename(inum);
   static inum n2i(std::string);
+  
+  int removeFromDir(inum,inum);
+
  public:
 
   yfs_client(std::string, std::string);
@@ -45,6 +73,16 @@ class yfs_client {
 
   int getfile(inum, fileinfo &);
   int getdir(inum, dirinfo &);
+
+  int create(inum, const char*, inum&,bool);
+  int lookup(inum, const char*, inum&);
+  int readdir(inum,vector<dirent>&);
+  int put(inum,string);
+  int get(inum,string&);
+  int remove(inum,inum);
+  //expose locking, yfs_client methods are not thread safe
+  int lock(inum);
+  int release(inum);
 };
 
 #endif 
