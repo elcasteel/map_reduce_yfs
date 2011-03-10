@@ -9,7 +9,8 @@
 #include "rpc.h"
 #include "lock_client.h"
 #include "lang/verify.h"
-
+#include <pthread.h>
+#include <map>
 
 // Classes that inherit lock_release_user can override dorelease so that 
 // that they will be called when lock_client releases a lock.
@@ -26,7 +27,37 @@ class lock_client_cache : public lock_client {
   int rlock_port;
   std::string hostname;
   std::string id;
+ 
+  enum state{
+        FREE = 0x2001,
+        LOCKED,
+        UNK,
+        REL,
+        ACQ,
+	IDLE
+  };
+  
+  //struct for lock_info
+  struct lock_entry{
+	state local_state;
+	state rpc_state;
+	int waiting;
+	pthread_cond_t cond;
+        
+    lock_entry(){
+       local_state = UNK;
+       rpc_state = IDLE;
+       waiting = 0;
+       pthread_cond_init (&cond, NULL);
+    }
+
+  };
+  std::map<lock_protocol::lockid_t,lock_entry> lock_map;
+  pthread_mutex_t mu;
+
  public:
+      
+
   static int last_port;
   lock_client_cache(std::string xdst, class lock_release_user *l = 0);
   virtual ~lock_client_cache() {};
@@ -34,7 +65,7 @@ class lock_client_cache : public lock_client {
   lock_protocol::status release(lock_protocol::lockid_t);
   rlock_protocol::status revoke_handler(lock_protocol::lockid_t, 
                                         int &);
-  rlock_protocol::status retry_handler(lock_protocol::lockid_t, 
+  rlock_protocol::status retry_handler(lock_protocol::lockid_t,bool wait, 
                                        int &);
 };
 

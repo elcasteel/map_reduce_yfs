@@ -1,7 +1,7 @@
 // yfs client.  implements FS operations using extent and lock server
 #include "yfs_client.h"
 #include "extent_client.h"
-#include "lock_client.h"
+#include "lock_client_cache.h"
 #include <sstream>
 #include <iostream>
 #include <stdio.h>
@@ -15,7 +15,7 @@
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-  lc = new lock_client(lock_dst);  
+  lc = new lock_client_cache(lock_dst);  
 }
 
 yfs_client::inum
@@ -127,7 +127,7 @@ yfs_client::create(inum parent, const char* name, inum &ino,bool isfile)
     return NOENT;
   }
 
-  cout << "\n dir contents are "<<b;  
+  //cout << "\n dir contents are "<<b;  
   
   b.append(",");
   ostringstream ost;
@@ -216,7 +216,7 @@ yfs_client::readdir(inum dir,vector<dirent>& dir_vector)
   char *c, buf[str.length()];
   strcpy(buf,str.c_str());
 
-  printf("\n directory contents are: %s",buf);
+  //printf("\n directory contents are: %s",buf);
 
 
   c = strtok(buf,",");
@@ -231,7 +231,7 @@ yfs_client::readdir(inum dir,vector<dirent>& dir_vector)
      entry.name = c;
      entry.inum = finum;
      dir_vector.push_back(entry);  
-     printf("\n File:%s mapped to %llu",entry.name.c_str(),entry.inum);
+     //printf("\n File:%s mapped to %llu",entry.name.c_str(),entry.inum);
      c = strtok(NULL,",");
   }
   printf("\nDirectory read.");
@@ -246,7 +246,7 @@ yfs_client::get(inum inum, string& str)
      printf("\n failed to get from extent server");
      return NOENT;
   }
-  printf("\n Got %s from server",str.c_str());
+  //printf("\n Got %s from server",str.c_str());
   return OK;
 }    
 
@@ -258,7 +258,7 @@ yfs_client::put(inum inum, string str)
      printf("\n failed to put to extent server");
      return NOENT;
   }
-  printf("\n Put %s to server",str.c_str());
+  //printf("\n Put %s to server",str.c_str());
   return OK;
 }    
 
