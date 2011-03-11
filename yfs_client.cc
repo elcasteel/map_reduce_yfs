@@ -56,7 +56,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
   // You modify this function for Lab 3
   // - hold and release the file lock
 
-  printf("getfile %016llx\n", inum);
+  //printf("getfile %016llx\n", inum);
   extent_protocol::attr a;
   if (ec->getattr(inum, a) != extent_protocol::OK) {
     r = IOERR;
@@ -67,7 +67,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
   fin.mtime = a.mtime;
   fin.ctime = a.ctime;
   fin.size = a.size;
-  printf("getfile %016llx -> sz %llu\n", inum, fin.size);
+  //printf("getfile %016llx -> sz %llu\n", inum, fin.size);
 
  release:
 
@@ -81,7 +81,7 @@ yfs_client::getdir(inum inum, dirinfo &din)
   // You modify this function for Lab 3
   // - hold and release the directory lock
 
-  printf("getdir %016llx\n", inum);
+  //printf("getdir %016llx\n", inum);
   extent_protocol::attr a;
   if (ec->getattr(inum, a) != extent_protocol::OK) {
     r = IOERR;
@@ -99,11 +99,11 @@ int
 yfs_client::create(inum parent, const char* name, inum &ino,bool isfile)
 {
   int ret = IOERR;
-  printf("\nCreating file in yfs_client.");
+  //printf("\nCreating file in yfs_client.");
   
   //lookup file, make sure it doesnt exist
   if((ret=lookup(parent,name,ino))==OK){
-     printf("\n file already exists with that name");
+     //printf("\n file already exists with that name");
      return EXIST;
    }
 
@@ -118,12 +118,12 @@ yfs_client::create(inum parent, const char* name, inum &ino,bool isfile)
   //add name/ino to parent dir
   string b;
   if(ec->get(ino,b)==extent_protocol::OK){
-    printf("\n had an inum collision!");
+    //printf("\n had an inum collision!");
     return EXIST;
   }
 
   if(ec->get(parent,b)!=extent_protocol::OK){
-    printf("\n no parent dir found");
+    //printf("\n no parent dir found");
     return NOENT;
   }
 
@@ -137,17 +137,17 @@ yfs_client::create(inum parent, const char* name, inum &ino,bool isfile)
   b.append(name);
   b.append(",");  
 
-  cout << "\n dir contents are now "<<b;
+  //cout << "\n dir contents are now "<<b;
 
   if((ret = ec->put(parent,b)) != extent_protocol::OK){
-    printf("\n failed to write to the directory");
+    //printf("\n failed to write to the directory");
     return ret;
   }
 
   //add ino to extent map
 
   if((ret=ec->put(ino,""))!=extent_protocol::OK){
-    printf("\n failed to create file in the extent server");
+    //printf("\n failed to create file in the extent server");
     return ret;
   }
 
@@ -160,11 +160,11 @@ int
 yfs_client::lookup(inum parent, const char* name, inum &ino)
 {
   
-  printf("\nLooking up file %s in parent id %llu",name,parent);
+  //printf("\nLooking up file %s in parent id %llu",name,parent);
   //read directory listing in parent
   vector<dirent> dir_contents;
   if(readdir(parent,dir_contents)!=OK){
-    printf("\n failed to read dir contents in lookup.");
+    //printf("\n failed to read dir contents in lookup.");
     return NOENT;
   }
 
@@ -177,14 +177,14 @@ yfs_client::lookup(inum parent, const char* name, inum &ino)
     //TODO ensure string compare works
     dirent temp = *it;
     if(temp.name==temp_name){
-       printf("\n found the file");
+       //printf("\n found the file");
        ino = temp.inum;
        return OK;
     }
 
   }  
 
-  printf("\n no file found");
+  //printf("\n no file found");
   return NOENT;
 }  
 
@@ -192,23 +192,23 @@ yfs_client::lookup(inum parent, const char* name, inum &ino)
 int                 
 yfs_client::readdir(inum dir,vector<dirent>& dir_vector)
 {
-  printf("\nReading directory in yfs_client for inum %llu",dir);
+  //printf("\nReading directory in yfs_client for inum %llu",dir);
   string str;
   if(ec->get(dir,str)!=extent_protocol::OK)
   {
-    printf("\n failed to get directory contents from extent client");
+    //printf("\n failed to get directory contents from extent client");
     return NOENT;
   }
 
   if(isfile(dir)){
-    printf("\n inum refers to a file, not a directory");
+    //printf("\n inum refers to a file, not a directory");
     return NOENT;
   }
   
 
   //parse contents of dir into dir_vector
   if(str.length()==0){
-    printf("\n directory is empty");
+    //printf("\n directory is empty");
     return OK;
   }
 

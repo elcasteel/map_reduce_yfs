@@ -23,7 +23,7 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
 {
   
   ScopedLock sl(&mu);
-  tprintf("\nacquiring lock on server\n");
+  tprintf("\nacquiring lock on server for client %s\n",id.c_str());
   lock_protocol::status ret = lock_protocol::RETRY;
   nacquire++;
 
