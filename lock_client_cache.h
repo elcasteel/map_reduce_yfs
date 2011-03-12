@@ -11,6 +11,7 @@
 #include "lang/verify.h"
 #include <pthread.h>
 #include <map>
+#include "threaded_queue.h"
 
 // Classes that inherit lock_release_user can override dorelease so that 
 // that they will be called when lock_client releases a lock.
@@ -52,6 +53,15 @@ class lock_client_cache : public lock_client {
     }
 
   };
+
+  enum rpc_enum{ ACQUIRE, RELEASE };
+  struct rpc_call{
+        rpc_enum rpc;
+        lock_protocol::lockid_t lock_id;
+
+  };
+
+  threaded_queue<rpc_call> rpc_queue;
   std::map<lock_protocol::lockid_t,lock_entry> lock_map;
   pthread_mutex_t mu;
 
@@ -67,7 +77,9 @@ class lock_client_cache : public lock_client {
                                         int &);
   rlock_protocol::status retry_handler(lock_protocol::lockid_t,bool wait, 
                                        int &);
+  void outgoing();
 };
+  void* dedicated(void* lock_cc);
 
 
 #endif

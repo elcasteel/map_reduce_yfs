@@ -31,6 +31,13 @@ lock_client_cache::lock_client_cache(std::string xdst,
 
   //init mutex
   pthread_mutex_init(&mu, NULL);
+  //start outgoing thread
+  pthread_t th_out;
+  int rc = pthread_create(&th_out,NULL,dedicated,(void*)this);
+  if(rc){
+    tprintf("\nfailed to create outgoing thread\n");
+    exit(-1);
+  }
 
 }
 
@@ -41,69 +48,36 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
   ScopedLock sl(&mu);
   tprintf("\nrecieved an acquire for lock %llu\n",lid);
   tprintf("\nacquire is for client with id %s\n",id.c_str());
-  //get lock entry and add count to waiting threads
   lock_map[lid].waiting++;
-
+  
   while(1){
-//        tprintf("\nin acquire while loop\n");
-        lock_entry ent = lock_map[lid];
-	 
-	if(ent.local_state==FREE){
-          //free
-          tprintf("\nlock is locally free, acquired it on client %s\n",id.c_str());
-          lock_map[lid].local_state = LOCKED;
-          lock_map[lid].waiting--;
-          return lock_protocol::OK;
-        }
+    if(lock_map[lid].local_state == FREE){
+	tprintf("\nlock was locally, free\n");
+        //give to thread
+	lock_map[lid].local_state = LOCKED;
+	lock_map[lid].waiting--;
+	return lock_protocol::OK;
 
-	if(ent.rpc_state==ACQ || ent.rpc_state==REL){
-	  //acquiring so go to wait on cond
-          tprintf("\nclient is already acquiring the lock\n");
-	}
+    }else if(lock_map[lid].rpc_state == ACQ || lock_map[lid].rpc_state == REL){
+	//go to wait
+	tprintf("\nclient is already acquiring or letting it go\n");
 
-	else if(ent.local_state == UNK){
-          tprintf("\nneed to get lock from server\n");
-
-	  //need to get from server
-	  lock_map[lid].rpc_state = ACQ;
-	  int r;
-	  pthread_mutex_unlock(&mu);
-	  int ret = cl->call(lock_protocol::acquire, lid,id,r);
-	  pthread_mutex_lock(&mu);
-	  if(ret==lock_protocol::OK || lock_map[lid].local_state==FREE){
-	    //we got the lock
-            tprintf("\ngot lock from server\n");
-	    lock_map[lid].local_state = LOCKED;
-	    if(lock_map[lid].rpc_state==ACQ)
-	      lock_map[lid].rpc_state = IDLE;
-	    lock_map[lid].waiting--;
-	    return ret;
-
-	  }
-	  else if(ret != lock_protocol::RETRY){
-	    //means an error
-	    tprintf("\nrpc client error during acquire call\n");
-	    lock_map[lid].waiting--;
-	    return ret;
-	  }
-
-	}
-
-	else if(ent.local_state==LOCKED){
-	  //just go to wait, here for debugging
-          tprintf("\nlock is taken locally, wait for it\n");
-	}
-	
-
-	//just wait on condition var to eventually acquire
-        tprintf("\nwaiting for lock on client %s\n",id.c_str());
-	pthread_cond_wait(&(lock_map[lid].cond), &mu);
-        tprintf("\nwoke up, going to try again on client %s\n",id.c_str());
-
+   }else if(lock_map[lid].local_state == UNK){
+	//assert rpc_state = IDLE
+	tprintf("\nclient needs to get it from the server\n");
+        lock_map[lid].rpc_state = ACQ;
+	rpc_call call;
+	call.rpc = lock_client_cache::ACQUIRE;
+	call.lock_id = lid;
+	rpc_queue.enqueue(call);
+	tprintf("\nacquire call queued for later\n");
+   }
+  //enter wait
+  tprintf("\nwaiting for lock\n");
+  pthread_cond_wait(&(lock_map[lid].cond),&mu);
+  tprintf("\nwaking up...\n");
   }
-  //should never get here
-  tprintf("\nshould never get here---------------------\n");
-  return lock_protocol::OK;
+
 }
 
 lock_protocol::status
@@ -112,39 +86,30 @@ lock_client_cache::release(lock_protocol::lockid_t lid)
 //  tprintf("\nrelease: attempting to acquire mutex\n");
   ScopedLock sl(&mu);
   tprintf("\nrecieved a release for lock %llu on client %s\n",lid,id.c_str());
-  lock_entry ent = lock_map[lid];
-  
-  //see if we need to return it, and if we should now
-  if(ent.rpc_state == REL && ent.waiting==0){
-        tprintf("\nreturning to server\n");
-	int r;
-	//make sure no one grabs it, rpc state is REL
-	lock_map[lid].local_state = LOCKED;
-	pthread_mutex_unlock(&mu);
-  	lock_protocol::status ret = cl->call(lock_protocol::release,lid,id,r);
-	pthread_mutex_lock(&mu);
-	if(ret!=lock_protocol::OK) {
-		tprintf("\nrpc release failed!\n");
-		return ret;
-	}
-	lock_map[lid].local_state = UNK;
-	lock_map[lid].rpc_state = IDLE;	
-	//check if anyone is waiting, if so wake up
-	if(lock_map[lid].waiting>0){
-	    pthread_cond_signal(&(lock_map[lid].cond));
-	}
-	return ret;
-  }  
-  else{
-        tprintf("\nkeeping lock, %d threads are waiting\n",lock_map[lid].waiting);
-	lock_map[lid].local_state=FREE;
-	if(lock_map[lid].waiting>0){
-	  tprintf("\nsignaling to wake up any threads\n");
-	  pthread_cond_signal(&(lock_map[lid].cond));
-	  tprintf("\nsignaled to wake up any threads\n");
-	}
-        return lock_protocol::OK;
+
+  if(lock_map[lid].waiting>0){
+    //some threads want the lock
+    lock_map[lid].local_state = FREE;
+    pthread_cond_signal(&(lock_map[lid].cond));
+    return lock_protocol::OK;
+
+  }else if(lock_map[lid].rpc_state == REL){
+    //no one wants it, but the server so return it
+    lock_map[lid].local_state = UNK;
+    lock_map[lid].rpc_state = IDLE;
+    rpc_call call;
+    call.rpc = lock_client_cache::RELEASE;
+    call.lock_id = lid;
+    rpc_queue.enqueue(call);
+    return lock_protocol::OK;
+    
+  }else{
+    //assert state is locked and idle
+    lock_map[lid].local_state = FREE;
+    return lock_protocol::OK;
+
   }
+
 
 }
 
@@ -157,34 +122,23 @@ lock_client_cache::revoke_handler(lock_protocol::lockid_t lid,
 
   ScopedLock sl(&mu);
   tprintf("\nrecieved a revoke for lock %llu with %d threads waiting\n",lid,lock_map[lid].waiting);
-  
-  if(lock_map[lid].rpc_state==ACQ){
-	tprintf("\nrevoke recieved while acquiring\n");
-	r=0;
-	lock_map[lid].rpc_state=REL;
-	return rlock_protocol::OK;
-  }
-
-  if(lock_map[lid].local_state == UNK || lock_map[lid].rpc_state == REL){
-     tprintf("\ngot a bad revoke,return ok?\n");
-     if(lock_map[lid].rpc_state==REL) tprintf("\nit is because of the release state\n");
-     r=0;
-     return rlock_protocol::OK;
-  }
-
-  int ret = rlock_protocol::OK;
-  lock_map[lid].rpc_state = REL;
-  r = 0;
-  //if lock is free, then give it back using r
-  if(lock_map[lid].local_state==FREE && lock_map[lid].waiting==0){
-    //means we freed it
-    tprintf("\nwe freed the lock in revoke\n");
-    r = 1;
-    lock_map[lid].local_state==UNK;
+  //state should not be unknown (we have the lock)
+  if(lock_map[lid].local_state==LOCKED){
+    tprintf("\nit was locked, so it will return later\n");
+    //we are not done, just set state to releasing
+    lock_map[lid].rpc_state=REL;
+  }else{
+    tprintf("\nlock is free, so we'll return it.\n");
+    //we are done so return it
+    lock_map[lid].local_state = UNK;
     lock_map[lid].rpc_state = IDLE;
+    rpc_call call;
+    call.rpc = lock_client_cache::RELEASE;
+    call.lock_id = lid;
+    rpc_queue.enqueue(call);
   }
+  return rlock_protocol::OK;  
 
-  return ret;
 }
 
 rlock_protocol::status
@@ -195,20 +149,43 @@ lock_client_cache::retry_handler(lock_protocol::lockid_t lid,bool wait,
   //sets the lock as free locally and signals a waiting thread
   ScopedLock sl(&mu);
   tprintf("\nrecieved a retry for lock %llu on client %s, %d threads are waiting\n",lid,id.c_str(),lock_map[lid].waiting);
-   
-  if(lock_map[lid].local_state != UNK || lock_map[lid].rpc_state == REL){
-     tprintf("\ngot a bad retry,return ok?\n");
-     return rlock_protocol::OK;
-  }
-
-  int ret = rlock_protocol::OK;
-  lock_map[lid].local_state = FREE;
-  //is there a wait on the server?
+  //lock state should be unknown
   lock_map[lid].rpc_state = wait ? REL : IDLE;
-  tprintf("\nsignaling waiting threads\n");
+  lock_map[lid].local_state = FREE;
   pthread_cond_signal(&(lock_map[lid].cond));
-  return ret;
+  return rlock_protocol::OK;
 }
 
+void 
+lock_client_cache::outgoing(){
+//handles the thread safe queue and makes rpc calls
+  tprintf("\nstarted outgoing thread.\n");
+  int r;
+  while(1){
+    rpc_call rp = rpc_queue.dequeue();
+    tprintf("\nrpc call to be made\n");
+    if(rp.rpc == lock_client_cache::ACQUIRE){
+      tprintf("\nmaking acquire rpc call\n");
+      lock_protocol::status ret = cl->call(lock_protocol::acquire,rp.lock_id,id,r);
+      if(ret==lock_protocol::RETRY){
+	tprintf("\nacquire returned RETRY\n");
+      }else{
+	 tprintf("\nacquire didnt return RETRY, error...\n");
+	}
+    }else{
+        //we have a release call to make
+       tprintf("\nmaking release rpc call\n");
+       lock_protocol::status ret = cl->call(lock_protocol::release,rp.lock_id,id,r);
+    }
+
+  }
 
 
+}
+
+void *
+dedicated(void *lcc){
+  lock_client_cache* lc = (lock_client_cache*) lcc;
+  lc->outgoing();
+
+}

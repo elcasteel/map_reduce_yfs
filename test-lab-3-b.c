@@ -482,7 +482,6 @@ main(int argc, char *argv[])
   printf("OK\n");
 
   printf("Concurrent creates: ");
-  fprintf(stderr, "Concurrent creates:\n");
   pid = fork();
   if(pid < 0){
     perror("test-lab-3-b: fork");
@@ -503,7 +502,6 @@ main(int argc, char *argv[])
   printf("OK\n");
 
   printf("Concurrent creates of the same file: ");
-  fprintf(stderr, "Concurrent creates of the same file: \n");
   pid = fork();
   if(pid < 0){
     perror("test-lab-3-b: fork");

@@ -10,6 +10,7 @@
 #include "lock_server.h"
 #include <queue>
 #include <pthread.h>
+#include "threaded_queue.h"
 
 class lock_server_cache {
  private:
@@ -22,6 +23,15 @@ class lock_server_cache {
     REL //releasing
   };
 
+  enum rpc_enum{ REVOKE, RETRY, RETRY_WAIT };
+  struct rpc_call{
+	rpc_enum rpc;
+	lock_protocol::lockid_t lock_id;
+	std::string name;
+
+  };
+
+
   struct lock_entry{
     std::queue<std::string> waiting;
     std::string owner;
@@ -33,6 +43,8 @@ class lock_server_cache {
 
   };
 
+  threaded_queue<rpc_call> rpc_queue;
+
   map<lock_protocol::lockid_t,lock_entry> lock_map;
   pthread_mutex_t mu;
 
@@ -43,7 +55,9 @@ class lock_server_cache {
   int release(lock_protocol::lockid_t, std::string id, int &);
   int retry_helper(lock_protocol::lockid_t,std::string id,bool wait);
   int revoke_helper(lock_protocol::lockid_t,std::string id,int &);
-
+  void outgoing();
 };
+
+  void * dedicated(void * lsc);
 
 #endif
