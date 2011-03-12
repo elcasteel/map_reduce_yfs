@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <map>
 #include "threaded_queue.h"
+#include <time.h>
 
 // Classes that inherit lock_release_user can override dorelease so that 
 // that they will be called when lock_client releases a lock.
@@ -64,6 +65,12 @@ class lock_client_cache : public lock_client {
   threaded_queue<rpc_call> rpc_queue;
   std::map<lock_protocol::lockid_t,lock_entry> lock_map;
   pthread_mutex_t mu;
+ 
+  //for reducing the number of aqcuire rpcs
+  pthread_cond_t a_cond;
+  bool releasing;
+  long delay;
+  struct timespec tp;  
 
  public:
       

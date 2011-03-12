@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include "tprintf.h"
 #include "rpc/slock.h"
-
+#include <time.h>
 
 int lock_client_cache::last_port = 0;
 
@@ -31,6 +31,10 @@ lock_client_cache::lock_client_cache(std::string xdst,
 
   //init mutex
   pthread_mutex_init(&mu, NULL);
+  //init rpc addons
+  pthread_cond_init(&a_cond,NULL);
+  releasing = false;
+  delay = 10000; //nanosecs
   //start outgoing thread
   pthread_t th_out;
   int rc = pthread_create(&th_out,NULL,dedicated,(void*)this);
@@ -73,6 +77,11 @@ lock_client_cache::acquire(lock_protocol::lockid_t lid)
 	tprintf("\nacquire call queued for later\n");
    }
   //enter wait
+  if(releasing){
+    tprintf("\nsignaling release call\n");
+    pthread_cond_signal(&a_cond);
+  }
+
   tprintf("\nwaiting for lock\n");
   pthread_cond_wait(&(lock_map[lid].cond),&mu);
   tprintf("\nwaking up...\n");
@@ -86,6 +95,15 @@ lock_client_cache::release(lock_protocol::lockid_t lid)
 //  tprintf("\nrelease: attempting to acquire mutex\n");
   ScopedLock sl(&mu);
   tprintf("\nrecieved a release for lock %llu on client %s\n",lid,id.c_str());
+
+  tprintf("\ngoing to delay a bit to see if anyone else wants it\n");
+  releasing = true;
+  clock_gettime(CLOCK_REALTIME, &tp);
+  tp.tv_nsec += delay;
+  int rc = 0;
+  while(lock_map[lid].waiting == 0 && rc == 0){
+     rc = pthread_cond_timedwait(&a_cond,&mu,&tp);
+  }    
 
   if(lock_map[lid].waiting>0){
     //some threads want the lock
