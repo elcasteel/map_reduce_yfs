@@ -1,6 +1,6 @@
 // yfs client.  implements FS operations using extent and lock server
 #include "yfs_client.h"
-#include "extent_client.h"
+#include "extent_client_cache.h"
 #include "lock_client_cache.h"
 #include <sstream>
 #include <iostream>
@@ -14,8 +14,9 @@
 
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
-  ec = new extent_client(extent_dst);
-  lc = new lock_client_cache(lock_dst);  
+  ec = new extent_client_cache(extent_dst);
+  lock_release_user *lu = new extent_release((extent_client_cache*)ec); 
+  lc = new lock_client_cache(lock_dst,lu);  
 }
 
 yfs_client::inum
@@ -96,23 +97,23 @@ yfs_client::getdir(inum inum, dirinfo &din)
 }
 
 int
-yfs_client::create(inum parent, const char* name, inum &ino,bool isfile)
+yfs_client::create(inum parent, const char* name, inum ino,bool isfile)
 {
   int ret = IOERR;
-  //printf("\nCreating file in yfs_client.");
+  printf("\nCreating file in yfs_client.");
   
   //lookup file, make sure it doesnt exist
   if((ret=lookup(parent,name,ino))==OK){
-     //printf("\n file already exists with that name");
+     printf("\n file already exists with that name");
      return EXIST;
    }
 
   //generate ino with rand and set file bit to 1 or 0
-  ino = rand();
-  if(isfile)
-     ino = ino | 0x80000000;
-  else
-     ino = ino & 0x7fffffff;  
+  //ino = rand();
+  //if(isfile)
+  //   ino = ino | 0x80000000;
+  //else
+  //   ino = ino & 0x7fffffff;  
 
 
   //add name/ino to parent dir

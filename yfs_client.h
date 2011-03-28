@@ -3,7 +3,7 @@
 
 #include <string>
 //#include "yfs_protocol.h"
-#include "extent_client.h"
+#include "extent_client_cache.h"
 #include <vector>
 #include "lock_client.h"
 
@@ -17,7 +17,7 @@ using namespace std;
 class yfs_client {
 
  public:
-  extent_client *ec;
+  extent_client_cache *ec;
   lock_client *lc;
 
  
@@ -74,7 +74,7 @@ class yfs_client {
   int getfile(inum, fileinfo &);
   int getdir(inum, dirinfo &);
 
-  int create(inum, const char*, inum&,bool);
+  int create(inum, const char*, inum,bool);
   int lookup(inum, const char*, inum&);
   int readdir(inum,vector<dirent>&);
   int put(inum,string);

@@ -166,19 +166,24 @@ lock_server_cache::outgoing(){
   tprintf("\nstarted outgoing thread.\n");
   while(1){
     rpc_call rp = rpc_queue.dequeue();
+    int ret;
     tprintf("\nmaking rpc call\n");
     if(rp.rpc == lock_server_cache::REVOKE){
         tprintf("\nmaking revoke rpc call\n");
 	int r;
-	int ret = revoke_helper(rp.lock_id,rp.name,r);
+	ret = revoke_helper(rp.lock_id,rp.name,r);
 
     }else if(rp.rpc == lock_server_cache::RETRY){
          tprintf("\nmaking retry rpc call\n");
-         int ret = retry_helper(rp.lock_id,rp.name,0);
+         ret = retry_helper(rp.lock_id,rp.name,0);
     }else{
 	//theres a waiting line for this lock
         tprintf("\nmaking retry with wait rpc call\n");
-	int ret = retry_helper(rp.lock_id,rp.name,1);	
+	ret = retry_helper(rp.lock_id,rp.name,1);	
+    }
+
+    if(ret!=rlock_protocol::OK){
+	tprintf("rpc call did not return OK");
     }
 
   }

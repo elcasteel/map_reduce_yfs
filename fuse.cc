@@ -26,7 +26,7 @@ yfs_client *yfs;
 int id() { 
   return myid;
 }
-
+//cant hold lock
 yfs_client::status
 getattr(yfs_client::inum inum, struct stat &st)
 {
@@ -68,6 +68,7 @@ void
 fuseserver_getattr(fuse_req_t req, fuse_ino_t ino,
           struct fuse_file_info *fi)
 {
+    yfs_client::yfs_lock lock(yfs->lc,ino);  
     struct stat st;
     yfs_client::inum inum = ino; // req->in.h.nodeid;
     yfs_client::status ret;
@@ -84,6 +85,7 @@ void
 fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, struct fuse_file_info *fi)
 {
   printf("fuseserver_setattr 0x%x\n", to_set);
+  yfs_client::yfs_lock lock(yfs->lc,ino);  
   if (FUSE_SET_ATTR_SIZE & to_set) {
     printf("   fuseserver_setattr set size to %zu\n", attr->st_size);
     struct stat st;
@@ -151,6 +153,7 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 {
   printf("\nReading file with inode %lu",ino);
   //printf("\noffset is %u and size is %u",off,size);
+  yfs_client::yfs_lock lock(yfs->lc,ino);  
   cout << "\noffset is "<<off<<" and size is "<<size;
   // You fill this in for Lab 2
   string buf;
@@ -217,7 +220,7 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
   fuse_reply_write(req, size);
 
 }
-
+//DONE lock both parent and child
 yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
      mode_t mode, struct fuse_entry_param *e)
@@ -232,6 +235,13 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   // You fill this in for Lab 2
   //fill in e->ino (inode) (unsigned long)
   yfs_client::inum ino;
+  //generate ino with rand and set file bit to 1      
+  ino = rand();
+  ino = ino | 0x80000000;
+  //lock child
+  yfs_client::yfs_lock lock_child(yfs->lc,ino);  
+
+
   yfs_client::inum yfs_parent = parent;
 
   int ret = yfs->create(yfs_parent,name,ino,1);
@@ -302,12 +312,14 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   // Look up the file named `name' in the directory referred to by
   // `parent' in YFS. If the file was found, initialize e.ino and
   // e.attr appropriately.
+  yfs_client::yfs_lock lock(yfs->lc,parent);  
   
   yfs_client::inum ino;
   if(yfs->lookup(parent,name,ino)!=yfs_client::OK){
      printf("\nLookup failed in fuse for name %s and parent id %lu",name,parent);
   }else{
      printf("\nLookup in fuse found id %llu",ino);
+     yfs_client::yfs_lock lock_child(yfs->lc,ino);  
      found = true;
      e.ino = ino;
      struct stat st;
@@ -398,6 +410,7 @@ fuseserver_open(fuse_req_t req, fuse_ino_t ino,
   fuse_reply_open(req, fi);
 }
 
+//DONE lock both parent and child
 void
 fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
      mode_t mode)
@@ -415,6 +428,11 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
   
   //fill in e->ino (inode) (unsigned long)
   yfs_client::inum ino;
+  //generate ino with rand and set file bit to 0
+  ino = rand();
+  ino = ino & 0x7fffffff;
+  yfs_client::yfs_lock lock_child(yfs->lc,ino);  
+
   yfs_client::inum yfs_parent = parent;
   //create dir in yfs client
   int ret = yfs->create(yfs_parent,name,ino,0);
@@ -441,7 +459,7 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
   fuse_reply_entry(req, &e);
   
 }
-
+//DONE lock both parent and ino
 void
 fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
@@ -455,6 +473,7 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
     fuse_reply_err(req, ENOSYS);
     return;
   }
+  yfs_client::yfs_lock lock_child(yfs->lc,ino);  
 
   //then call remove on yfs client which also removes from parent
   if(yfs->remove(parent,ino)!=yfs_client::OK){

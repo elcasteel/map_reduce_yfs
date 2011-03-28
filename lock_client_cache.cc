@@ -140,6 +140,7 @@ lock_client_cache::revoke_handler(lock_protocol::lockid_t lid,
 
   ScopedLock sl(&mu);
   tprintf("\nrecieved a revoke for lock %llu with %d threads waiting\n",lid,lock_map[lid].waiting);
+
   //state should not be unknown (we have the lock)
   if(lock_map[lid].local_state==LOCKED){
     tprintf("\nit was locked, so it will return later\n");
@@ -193,6 +194,8 @@ lock_client_cache::outgoing(){
     }else{
         //we have a release call to make
        tprintf("\nmaking release rpc call\n");
+       //flushing extent cache
+       lu->dorelease(rp.lock_id);
        lock_protocol::status ret = cl->call(lock_protocol::release,rp.lock_id,id,r);
     }
 
