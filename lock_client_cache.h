@@ -10,6 +10,7 @@
 #include "lock_client.h"
 #include "lang/verify.h"
 
+#include "rsm_client.h"
 
 // Classes that inherit lock_release_user can override dorelease so that 
 // that they will be called when lock_client releases a lock.
@@ -20,22 +21,30 @@ class lock_release_user {
   virtual ~lock_release_user() {};
 };
 
+
+class lock_client_cache;
+
+// Clients that caches locks.  The server can revoke locks using 
+// lock_revoke_server.
 class lock_client_cache : public lock_client {
  private:
+  rsm_client *rsmc;
   class lock_release_user *lu;
   int rlock_port;
   std::string hostname;
   std::string id;
+  lock_protocol::xid_t xid;
  public:
   static int last_port;
   lock_client_cache(std::string xdst, class lock_release_user *l = 0);
   virtual ~lock_client_cache() {};
   lock_protocol::status acquire(lock_protocol::lockid_t);
-  lock_protocol::status release(lock_protocol::lockid_t);
+  virtual lock_protocol::status release(lock_protocol::lockid_t);
+  void releaser();
   rlock_protocol::status revoke_handler(lock_protocol::lockid_t, 
-                                        int &);
+				        lock_protocol::xid_t, int &);
   rlock_protocol::status retry_handler(lock_protocol::lockid_t, 
-                                       int &);
+				       lock_protocol::xid_t, int &);
 };
 
 
