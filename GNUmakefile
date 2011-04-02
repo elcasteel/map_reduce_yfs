@@ -7,7 +7,7 @@ LAB4GE=$(shell expr $(LAB) \>\= 4)
 LAB5GE=$(shell expr $(LAB) \>\= 5)
 LAB6GE=$(shell expr $(LAB) \>\= 6)
 LAB7GE=$(shell expr $(LAB) \>\= 7)
-CXXFLAGS =  -g -MD -Wall -I. -I$(RPC) -DLAB=$(LAB) -DSOL=$(SOL) -D_FILE_OFFSET_BITS=64
+CXXFLAGS =  -g -MMD -Wall -I. -I$(RPC) -DLAB=$(LAB) -DSOL=$(SOL) -D_FILE_OFFSET_BITS=64
 FUSEFLAGS= -D_FILE_OFFSET_BITS=64 -DFUSE_USE_VERSION=25 -I/usr/local/include/fuse -I/usr/include/fuse
 ifeq ($(shell uname -s),Darwin)
 MACFLAGS= -D__FreeBSD__=10
@@ -69,7 +69,7 @@ ifeq ($(LAB4GE),1)
 lock_tester += lock_client_cache.cc
 endif
 ifeq ($(LAB7GE),1)
-lock_tester+=rsm_client.cc handle.cc
+lock_tester+=rsm_client.cc handle.cc lock_client_cache_rsm.cc
 endif
 lock_tester : $(patsubst %.cc,%.o,$(lock_tester)) rpc/librpc.a
 
@@ -80,6 +80,10 @@ endif
 ifeq ($(LAB6GE),1)
 lock_server+= $(rsm_files)
 endif
+ifeq ($(LAB7GE),1)
+lock_server+= lock_server_cache_rsm.cc
+endif
+
 lock_server : $(patsubst %.cc,%.o,$(lock_server)) rpc/librpc.a
 
 yfs_client=yfs_client.cc extent_client.cc fuse.cc
@@ -87,7 +91,7 @@ ifeq ($(LAB3GE),1)
 yfs_client += lock_client.cc
 endif
 ifeq ($(LAB7GE),1)
-yfs_client += rsm_client.cc
+yfs_client += rsm_client.cc lock_client_cache_rsm.cc
 endif
 ifeq ($(LAB4GE),1)
 yfs_client += lock_client_cache.cc
@@ -104,7 +108,7 @@ test-lab-3-c=test-lab-3-c.c
 test-lab-4-c:  $(patsubst %.c,%.o,$(test_lab_4-c)) rpc/librpc.a
 
 rsm_tester=rsm_tester.cc rsmtest_client.cc
-rsm_tester:  $(patsubst %.c,%.o,$(rsm_tester)) rpc/librpc.a
+rsm_tester:  $(patsubst %.cc,%.o,$(rsm_tester)) rpc/librpc.a
 
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -116,7 +120,18 @@ fuse.o: fuse.cc
 -include mklab.inc
 
 -include *.d
+-include rpc/*.d
 
-.PHONY : clean
-clean : 
-	rm -rf rpc/rpctest rpc/*.o rpc/*.d rpc/librpc.a *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest test-lab-3-b test-lab-3-c rsm_tester
+clean_files=rpc/rpctest rpc/*.o rpc/*.d rpc/librpc.a *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest test-lab-3-b test-lab-3-c rsm_tester
+.PHONY: clean handin
+clean: 
+	rm $(clean_files) -rf 
+
+handin_ignore=$(clean_files) core* *log
+handin_file=$(shell whoami)-lab$(LAB).tgz
+labdir=$(shell basename $(PWD))
+handin: 
+	@if test -f stop.sh; then ./stop.sh > /dev/null 2>&1 | echo ""; fi
+	@bash -c "cd ../; tar -X <(tr ' ' '\n' < <(echo '$(handin_ignore)')) -czvf $(handin_file) $(labdir); cd $(labdir)"
+	@echo Please email $(handin_file) to 6.824-submit@pdos.csail.mit.edu
+	@echo Thanks!

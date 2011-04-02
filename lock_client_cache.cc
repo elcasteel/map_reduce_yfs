@@ -8,15 +8,6 @@
 #include <stdio.h>
 #include "tprintf.h"
 
-#include "rsm_client.h"
-
-static void *
-releasethread(void *x)
-{
-  lock_client_cache *cc = (lock_client_cache *) x;
-  cc->releaser();
-  return 0;
-}
 
 int lock_client_cache::last_port = 0;
 
@@ -36,31 +27,13 @@ lock_client_cache::lock_client_cache(std::string xdst,
   rpcs *rlsrpc = new rpcs(rlock_port);
   rlsrpc->reg(rlock_protocol::revoke, this, &lock_client_cache::revoke_handler);
   rlsrpc->reg(rlock_protocol::retry, this, &lock_client_cache::retry_handler);
-  xid = 0;
-  rsmc = new rsm_client(xdst);
-  pthread_t th;
-  int r = pthread_create(&th, NULL, &releasethread, (void *) this);
-  VERIFY (r == 0);
 }
-
-
-void
-lock_client_cache::releaser()
-{
-
-  // This method should be a continuous loop, waiting to be notified of
-  // freed locks that have been revoked by the server, so that it can
-  // send a release RPC.
-
-}
-
 
 lock_protocol::status
 lock_client_cache::acquire(lock_protocol::lockid_t lid)
 {
   int ret = lock_protocol::OK;
-
-  return ret;
+  return lock_protocol::OK;
 }
 
 lock_protocol::status
@@ -70,10 +43,9 @@ lock_client_cache::release(lock_protocol::lockid_t lid)
 
 }
 
-
 rlock_protocol::status
 lock_client_cache::revoke_handler(lock_protocol::lockid_t lid, 
-			          lock_protocol::xid_t xid, int &)
+                                  int &)
 {
   int ret = rlock_protocol::OK;
   return ret;
@@ -81,7 +53,7 @@ lock_client_cache::revoke_handler(lock_protocol::lockid_t lid,
 
 rlock_protocol::status
 lock_client_cache::retry_handler(lock_protocol::lockid_t lid, 
-			         lock_protocol::xid_t xid, int &)
+                                 int &)
 {
   int ret = rlock_protocol::OK;
   return ret;

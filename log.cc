@@ -96,6 +96,8 @@ log::loginstance(unsigned instance, std::string v)
   f.close();
 }
 
+// an acceptor should call logprop(n_h) when it
+// receives a prepare to which it responds prepare_ok().
 void
 log::logprop(prop_t n_h)
 {
@@ -110,6 +112,8 @@ log::logprop(prop_t n_h)
   f.close();
 }
 
+// an acceptor should call logaccept(n_a, v_a) when it
+// receives an accept RPC to which it replies accept_ok().
 void
 log::logaccept(prop_t n, std::string v)
 {

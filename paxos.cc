@@ -207,6 +207,7 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 
 }
 
+// the src argument is only for debug purpose
 paxos_protocol::status
 acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, bool &r)
 {
@@ -215,6 +216,7 @@ acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, bool &r)
   return paxos_protocol::OK;
 }
 
+// the src argument is only for debug purpose
 paxos_protocol::status
 acceptor::decidereq(std::string src, paxos_protocol::decidearg a, int &r)
 {
