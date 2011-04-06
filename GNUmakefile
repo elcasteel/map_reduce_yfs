@@ -132,6 +132,6 @@ handin_file=$(shell whoami)-lab$(LAB).tgz
 labdir=$(shell basename $(PWD))
 handin: 
 	@if test -f stop.sh; then ./stop.sh > /dev/null 2>&1 | echo ""; fi
-	@bash -c "cd ../; tar -X <(tr ' ' '\n' < <(echo '$(handin_ignore)')) -czvf $(handin_file) $(labdir); cd $(labdir)"
+	@bash -c "cd ../; tar -X <(tr ' ' '\n' < <(echo '$(handin_ignore)')) -czvf $(handin_file) $(labdir); mv $(handin_file) $(labdir); cd $(labdir)"
 	@echo Please email $(handin_file) to 6.824-submit@pdos.csail.mit.edu
 	@echo Thanks!
