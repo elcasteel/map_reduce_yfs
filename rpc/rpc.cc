@@ -426,7 +426,7 @@ rpcs::rpcs(unsigned int p1, int count)
 	}
 
 	reg(rpc_const::bind, this, &rpcs::rpcbind);
-	dispatchpool_ = new ThrPool(10,false);
+	dispatchpool_ = new ThrPool(6,false);
 
 	listener_ = new tcpsconn(this, port_, lossytest_);
 }
