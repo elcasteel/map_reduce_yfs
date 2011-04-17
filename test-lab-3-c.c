@@ -155,6 +155,7 @@ createn(const char *d, const char *prefix, int nf)
 
   for(i = 0; i < nf; i++){
     sprintf(n, "%s/%s-%d", d, prefix, i);
+    printf("\non file %d\n",i);
     fd = creat(n, 0666);
     if(fd < 0){
       fprintf(stderr, "test-lab-3-c: create(%s): %s\n",

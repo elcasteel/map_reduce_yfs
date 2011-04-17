@@ -8,6 +8,8 @@
 
 #include "jsl_log.h"
 
+using namespace std;
+
 // Main loop of lock_server
 
 int
@@ -54,6 +56,7 @@ main(int argc, char *argv[])
   rsm.reg(lock_protocol::stat, &ls, &lock_server_cache_rsm::stat);
 #endif // STEP_ONE
 #endif // RSM
+
 
 
   while(1)
