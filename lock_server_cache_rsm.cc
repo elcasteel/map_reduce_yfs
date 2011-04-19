@@ -40,10 +40,10 @@ lock_server_cache_rsm::outgoing()
   while(1){
     rpc_call rp = rpc_queue.dequeue();
     //if not primary dont make rpc call
-    //if(!rsm->amiprimary()){
-    //  tprintf("\nnot primary so wont make rpc call to client\n");
-    //  return;
-    //}
+    if(!rsm->amiprimary()){
+      tprintf("\nnot primary so wont make rpc call to client\n");
+      return;
+    }
     
     int ret;
     tprintf("\nI am the primary, so making rpc call\n");

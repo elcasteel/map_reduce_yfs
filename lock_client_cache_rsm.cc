@@ -51,7 +51,7 @@ lock_client_cache_rsm::lock_client_cache_rsm(std::string xdst,
   delay = 10000; //nanosecs
 
   //init rsm client
-  //rsmc = new rsm_client(xdst);
+  rsmc = new rsm_client(xdst);
 
 }
 
@@ -68,7 +68,7 @@ lock_client_cache_rsm::outgoing()
     tprintf("\nrpc call to be made\n");
     if(rp.rpc == lock_client_cache_rsm::ACQUIRE){
       tprintf("\nmaking acquire rpc call\n");
-      lock_protocol::status ret = cl->call(lock_protocol::acquire,rp.lock_id,id,rp.xid,r);
+      lock_protocol::status ret = rsmc->call(lock_protocol::acquire,rp.lock_id,id,rp.xid,r);
       if(ret==lock_protocol::RETRY){                  
         tprintf("\nacquire returned RETRY\n");
       }else{                  
@@ -80,7 +80,7 @@ lock_client_cache_rsm::outgoing()
        //flushing extent cache
        if(lu!=NULL)
          lu->dorelease(rp.lock_id);
-       lock_protocol::status ret = cl->call(lock_protocol::release,rp.lock_id,id,rp.xid,r);
+       lock_protocol::status ret = rsmc->call(lock_protocol::release,rp.lock_id,id,rp.xid,r);
     }
 
   }
