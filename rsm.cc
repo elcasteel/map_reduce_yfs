@@ -87,6 +87,7 @@
 #include "lang/verify.h"
 #include "rsm_client.h"
 
+
 static void *
 recoverythread(void *x)
 {
@@ -323,9 +324,59 @@ rsm::execute(int procno, std::string req)
 rsm_client_protocol::status
 rsm::client_invoke(int procno, std::string req, std::string &r)
 {
+  tprintf("\nHandling client_invoke\n");
   int ret = rsm_client_protocol::OK;
   // You fill this in for Lab 7
-  return ret;
+  if(!amiprimary()){
+  tprintf("\nNot a primary!\n");
+  pthread_mutex_unlock(&rsm_mutex);
+  return rsm_client_protocol::NOTPRIMARY;
+  }
+  pthread_mutex_lock(&rsm_mutex);
+  tprintf("\nI am the master, so proceeding\n");
+  if(inviewchange){
+  tprintf("\nIn the middle of a view change, so busy\n");
+  pthread_mutex_unlock(&rsm_mutex);
+  return rsm_client_protocol::BUSY;
+  }
+  //update and use new viewstamp, updates myvs as well
+  viewstamp n_vs(myvs.vid,myvs.seqno);
+  myvs.seqno++;
+  //release rms mutex and acquire invoke mutex
+  tprintf("\nreleasing rsm mutex\n");
+  pthread_mutex_unlock(&rsm_mutex);
+  tprintf("\nreleased rsm mutex, acquiring invoke mutex\n");
+  ScopedLock ml(&invoke_mutex);
+  int dummy;
+  tprintf("\nReplicating call to backups\n");
+  //iterate over all backups and send invoke rpc
+  std::vector<std::string>::iterator it;
+  for(it = backups.begin();it<backups.end();it++){
+    tprintf("\nmaking a prepare rpc call to %s\n",(*it).c_str());
+    handle h(*it);
+    rpcc *cl = h.safebind();
+    if(cl){
+      ret=cl->call(rsm_protocol::invoke,procno,n_vs,req,dummy,rpcc::to(1000));
+      if(ret!=rsm_protocol::OK){
+        //no good
+   	tprintf("\nsome backup invoke failed\n");
+        return rsm_client_protocol::ERR;
+      }
+      
+    }else{
+      tprintf("\nfailed to bind!\n");
+      return rsm_client_protocol::BUSY;
+    }
+
+  }
+  //if we get here then all backups have been updated
+  r = execute(procno,req);
+  //update last vs
+  last_myvs = n_vs;
+  //should be OK
+  //VERIFY(ret == rsm_protocol::OK);
+  tprintf("\nrsm server is returning ok\n");
+  return rsm_client_protocol::OK;
 }
 
 // 
@@ -340,6 +391,22 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 {
   rsm_protocol::status ret = rsm_protocol::OK;
   // You fill this in for Lab 7
+  //TODO dont need to do locking in here? check for this...
+  //error checking
+  if(amiprimary()){
+    tprintf("\nI am the primary, shouldnt get an invoke.\n");
+    return rsm_protocol::ERR;
+  }
+
+  //make sure vs is right
+  if(vs.seqno!=myvs.seqno || vs.vid!=myvs.vid){
+    tprintf("\nDidnt get the viewstamp I expected in backup invoke call\n");
+    return rsm_protocol::ERR;
+  }
+  //update myvs
+  myvs.seqno++;
+  execute(proc,req);
+
   return ret;
 }
 
