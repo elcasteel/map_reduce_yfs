@@ -26,6 +26,7 @@ lock_server_cache_rsm::lock_server_cache_rsm(class rsm *_rsm)
   VERIFY (r == 0);
   //init mutex
   pthread_mutex_init(&mu, NULL);
+  rsm->set_state_transfer(this);
 }
 
 void
@@ -102,7 +103,7 @@ int lock_server_cache_rsm::acquire(lock_protocol::lockid_t lid, std::string id,
     tprintf("\nthrowing away this xid...\n");
     //le.queue should be empty
     tprintf("\nlock is taken by %s, queueing revoke call\n",le.owner.c_str());
-    lock_map[lid].waiting.push(id);
+    lock_map[lid].waiting.push_back(id);
     lock_map[lid].local_state = ACQ;
     //queue revoke call
     rpc_call call;
@@ -116,7 +117,7 @@ int lock_server_cache_rsm::acquire(lock_protocol::lockid_t lid, std::string id,
   else if(le.local_state == ACQ){
     //le.queue should be non-empty
     tprintf("\nserver is already attempting to acquire lock, queueing to waiting list\n");
-    lock_map[lid].waiting.push(id);
+    lock_map[lid].waiting.push_back(id);
 
   }else{
     //shouldnt get here
@@ -146,7 +147,7 @@ lock_server_cache_rsm::release(lock_protocol::lockid_t lid, std::string id,
     //queue is not empty, send lock to next in line
     std::string next = lock_map[lid].waiting.front();
     tprintf("\nsending lock to next in line: %s\n",next.c_str());
-    lock_map[lid].waiting.pop();
+    lock_map[lid].waiting.pop_front();
     lock_map[lid].owner = next;
     rpc_call call;
     call.name = next;
@@ -169,14 +170,92 @@ lock_server_cache_rsm::release(lock_protocol::lockid_t lid, std::string id,
 std::string
 lock_server_cache_rsm::marshal_state()
 {
-  std::ostringstream ost;
-  std::string r;
-  return r;
+  ScopedLock sl(&mu);
+  tprintf("\nMarshalling state for lock server\n");
+  marshall rep;
+  //marshall lock_map
+  
+  //start with map size
+  rep << lock_map.size();
+  //iterate through map
+  map<lock_protocol::lockid_t,lock_entry>::iterator it;
+  for(it = lock_map.begin();it!=lock_map.end(); it++){
+    //get lid/lock_entry pair
+    lock_protocol::lockid_t lid = it->first;
+    lock_entry le = lock_map[lid];
+    rep << lid;
+    //input xid, local_state, and owner
+    rep << le.xid;
+    rep << le.local_state;
+    rep << le.owner;
+    //serialize queue
+    rep << le.waiting.size();
+    std::deque<std::string>::iterator qit;
+    for(qit = le.waiting.begin();qit!=le.waiting.end();qit++){
+      rep << *qit;
+
+    }
+
+  }
+
+  return rep.str();
 }
 
 void
 lock_server_cache_rsm::unmarshal_state(std::string state)
 {
+  ScopedLock sl(&mu);
+  //unmarshall lock_map
+  unmarshall rep(state);
+  //first clear current map
+  lock_map.clear();
+  //then fill it back up
+  unsigned int map_size;
+  rep >> map_size;
+  
+  unsigned int i;
+  for(i=0;i<map_size;i++){
+    //get lid
+    unsigned long long lid;
+    rep >> lid;
+    lock_entry le;
+    //get xid, local_state, and owner
+    unsigned long long xid;
+    int local_state;
+    rep >> xid;
+    le.xid = xid;
+    rep >> local_state;
+    //cant figure out enum casting so doing it the hard way
+    if(local_state == LOCKED)
+      le.local_state = LOCKED;
+    else if(local_state == FREE)
+      le.local_state = FREE;
+    else if(local_state == ACQ)
+      le.local_state = ACQ;
+    else if(local_state == REL)
+      le.local_state = REL;
+    else 
+      VERIFY(0); //we have a bad state
+
+    rep >> le.owner;
+    //deserialize waiting queue
+    unsigned int deque_size;
+    rep >> deque_size;
+    unsigned int j;
+    
+    for(j=0;j<deque_size;j++){
+      std::string wait;
+      rep >> wait;
+      le.waiting.push_back(wait);
+
+    }
+    //lock_entry should be done, now put it in map
+    lock_map[lid] = le;
+
+
+  }
+
+
 }
 
 lock_protocol::status
