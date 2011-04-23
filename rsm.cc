@@ -162,19 +162,25 @@ rsm::recovery()
 	VERIFY(pthread_mutex_lock(&rsm_mutex)==0);
       }
     }
-    myvs.vid = vid_commit;
-    myvs.seqno = 1;
     vid_insync = vid_commit;
-    // You fill this in for Lab 7
-    // - syncrhonize for view vid_insync
-
+    tprintf("recovery: sync vid_insync %d\n", vid_insync);
+    if (primary == cfg->myaddr()) {
+      r = sync_with_backups();
+    } else {
+      r = sync_with_primary();
+    }
+    tprintf("recovery: sync done\n");
 
     // If there was a commited viewchange during the synchronization, restart
     // the recovery
     if (vid_insync != vid_commit)
       continue;
 
-    if (r) inviewchange = false;
+    if (r) { 
+      myvs.vid = vid_commit;
+      myvs.seqno = 1;
+      inviewchange = false;
+    }
     tprintf("recovery: go to sleep %d %d\n", insync, inviewchange);
     pthread_cond_wait(&recovery_cond, &rsm_mutex);
   }
