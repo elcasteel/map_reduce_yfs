@@ -183,10 +183,26 @@ rsm::recovery()
 bool
 rsm::sync_with_backups()
 {
+  pthread_mutex_unlock(&rsm_mutex);
+  {
+    // Make sure that the state of lock_server_cache_rsm is stable during 
+    // synchronization; otherwise, the primary's state may be more recent
+    // than replicas after the synchronization.
+    ScopedLock ml(&invoke_mutex);
+    // By acquiring and releasing the invoke_mutex once, we make sure that
+    // the state of lock_server_cache_rsm will not be changed until all
+    // replicas are synchronized. The reason is that client_invoke arrives
+    // after this point of time will see inviewchange == true, and returns
+    // BUSY.
+  }
+  pthread_mutex_lock(&rsm_mutex);
+  // Start accepting synchronization request (statetransferreq) now!
+  insync = true;
   // You fill this in for Lab 7
   // Wait until
   //   - all backups in view vid_insync are synchronized
   //   - or there is a committed viewchange
+  insync = false;
   return true;
 }
 
