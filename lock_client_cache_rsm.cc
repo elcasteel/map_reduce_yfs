@@ -49,6 +49,9 @@ lock_client_cache_rsm::lock_client_cache_rsm(std::string xdst,
   pthread_cond_init(&a_cond,NULL);
   releasing = false;
   delay = 10000; //nanosecs
+  //repeat acquires every 3 sec
+  acquire_delay = 3;
+  
 
   //init rsm client
   rsmc = new rsm_client(xdst);
@@ -105,14 +108,16 @@ lock_client_cache_rsm::acquire(lock_protocol::lockid_t lid)
         lock_map[lid].waiting--;
         return lock_protocol::OK;
 
-    }else if(lock_map[lid].rpc_state == ACQ || lock_map[lid].rpc_state == REL){
+    }else if(lock_map[lid].rpc_state == REL){
         //go to wait
-        tprintf("\nclient is already acquiring or letting it go\n");
-   }else if(lock_map[lid].local_state == UNK){
+        tprintf("\nclient is already releasing the lock\n");
+   }else if(lock_map[lid].rpc_state == ACQ || lock_map[lid].local_state == UNK){
         //assert rpc_state = IDLE
-	//update xid for self and lock entry
-	lock_map[lid].xid = xid++;
-        tprintf("\nclient needs to get it from the server\n");
+	//update xid for self and lock entry if this is a new request
+	if(lock_map[lid].rpc_state != ACQ){
+          lock_map[lid].xid = xid++;
+        }
+        tprintf("\nclient %s needs to get it from the server with xid: %llu\n",id.c_str(),lock_map[lid].xid);
         lock_map[lid].rpc_state = ACQ;
         rpc_call call;
         call.rpc = lock_client_cache_rsm::ACQUIRE;
@@ -128,7 +133,12 @@ lock_client_cache_rsm::acquire(lock_protocol::lockid_t lid)
   }
 
   tprintf("\nwaiting for lock\n");
-  pthread_cond_wait(&(lock_map[lid].cond),&mu);
+  clock_gettime(CLOCK_REALTIME, &acquire_tp);
+  acquire_tp.tv_sec += acquire_delay;
+
+  pthread_cond_timedwait(&(lock_map[lid].cond),&mu,&acquire_tp);
+  
+
   tprintf("\nwaking up...\n");
   }
 
@@ -188,27 +198,34 @@ lock_client_cache_rsm::revoke_handler(lock_protocol::lockid_t lid,
   ScopedLock sl(&mu);  
   tprintf("\nrecieved a revoke for lock %llu with %d threads waiting\n",lid,lock_map[lid].waiting);
 
-  //TODO make sure xid matches
-
+  //make sure xid matches
+  if(xid != lock_map[lid].xid){
+    tprintf("\ngot a bad xid in client revoke. Ignoring it: %llu\n",xid);
+    return rlock_protocol::OK;
+    
+  }
   //state should not be unknown (we have the lock)
-  VERIFY(lock_map[lid].local_state!=UNK);
+  //VERIFY(lock_map[lid].local_state!=UNK);
+  //just send another release for each revoke even if we dont have the lock anymore
 
   if(lock_map[lid].local_state==LOCKED){
     tprintf("\nit was locked, so it will return later\n");
     //we are not done, just set state to releasing
     lock_map[lid].rpc_state=REL;
-  }else if(lock_map[lid].local_state==FREE){
+  }else {//if(lock_map[lid].local_state==FREE){
     tprintf("\nlock is free, so we'll return it.\n");
     //we are done so return it
     lock_map[lid].local_state = UNK;
     lock_map[lid].rpc_state = IDLE;
     rpc_call call;
     call.rpc = lock_client_cache_rsm::RELEASE;
+    call.xid = lock_map[lid].xid;
     call.lock_id = lid;
     rpc_queue.enqueue(call);
-  }else{
-	tprintf("\nGot a revoke when we shouldnt have...\n");
   }
+  //else{
+  //	tprintf("\nGot a revoke when we shouldnt have...\n");
+  //}
   return rlock_protocol::OK;
 
 }
@@ -221,10 +238,22 @@ lock_client_cache_rsm::retry_handler(lock_protocol::lockid_t lid,lock_protocol::
   ScopedLock sl(&mu);
   tprintf("\nrecieved a retry for lock %llu on client %s, %d threads are waiting\n",lid,id.c_str(),lock_map[lid].waiting);
   
-  //TODO make sure xids match
+  //make sure xid matches
+  if(xid != lock_map[lid].xid){
+    tprintf("\ngot a bad xid in client retry. Ignoring it : %llu\n",xid);
+    return rlock_protocol::RPCERR;
+    
+  }
 
   //lock state should be unknown
-  VERIFY(lock_map[lid].local_state==UNK);
+  //VERIFY(lock_map[lid].local_state==UNK);
+  //if not ignore, makes this idempotent
+  if(lock_map[lid].local_state != UNK)
+  {
+    tprintf("\nGot duplicate retry, ignoring\n");
+    return rlock_protocol::OK;
+  }
+
   lock_map[lid].rpc_state = wait ? REL : IDLE;
   if(wait) {
     tprintf("\nThere is a wait on the server\n");

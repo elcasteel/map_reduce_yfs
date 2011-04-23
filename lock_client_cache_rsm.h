@@ -80,7 +80,9 @@ enum state{
   bool releasing;
   long delay;
   struct timespec tp;
-
+  //for repeating acquire rpcs...
+  long acquire_delay;
+  struct timespec acquire_tp;
 
 public:
   static int last_port;

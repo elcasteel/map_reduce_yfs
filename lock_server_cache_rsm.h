@@ -35,6 +35,7 @@ class lock_server_cache_rsm : public rsm_state_transfer {
 
   struct lock_entry{
     std::deque<std::string> waiting;
+    std::map<std::string,lock_protocol::xid_t> xid_map;
     std::string owner;
     state local_state;
     lock_protocol::xid_t xid;

@@ -77,10 +77,12 @@ int lock_server_cache_rsm::acquire(lock_protocol::lockid_t lid, std::string id,
              lock_protocol::xid_t xid, int &)
 {
   ScopedLock sl(&mu);
-  tprintf("\nacquiring lock on server for client %s\n",id.c_str());
+  tprintf("\nacquiring lock on server for client %s with xid %llu\n",id.c_str(),xid);
   nacquire++;
 
   lock_entry le = lock_map[lid];
+  
+  
 
   if(le.local_state==FREE){
     //le.queue should be empty...
@@ -93,23 +95,29 @@ int lock_server_cache_rsm::acquire(lock_protocol::lockid_t lid, std::string id,
     call.rpc = lock_server_cache_rsm::RETRY;
     call.lock_id=lid;
     call.name = id;
+    call.xid = xid;
     rpc_queue.enqueue(call);
 
 
   }
 
+  //ignore an acquire by the owner
+  else if(le.owner == id){
+    tprintf("\nrecieved an acquire by the owner... ignoring it\n");
+  }
+
   else if(le.local_state == LOCKED){
-    //TODO need to do something with xid here
-    tprintf("\nthrowing away this xid...\n");
     //le.queue should be empty
-    tprintf("\nlock is taken by %s, queueing revoke call\n",le.owner.c_str());
+    tprintf("\nlock is taken by %s, queueing revoke call with xid %llu\n",le.owner.c_str(),le.xid);
     lock_map[lid].waiting.push_back(id);
     lock_map[lid].local_state = ACQ;
+    lock_map[lid].xid_map[id] = xid;
     //queue revoke call
     rpc_call call;
     call.rpc = lock_server_cache_rsm::REVOKE;
     call.name = le.owner;
     call.lock_id = lid;
+    call.xid = le.xid;
     rpc_queue.enqueue(call);
 
   }
@@ -117,7 +125,32 @@ int lock_server_cache_rsm::acquire(lock_protocol::lockid_t lid, std::string id,
   else if(le.local_state == ACQ){
     //le.queue should be non-empty
     tprintf("\nserver is already attempting to acquire lock, queueing to waiting list\n");
-    lock_map[lid].waiting.push_back(id);
+    //check if this is a duplicate acquire
+    std::deque<std::string>::iterator it;
+    
+    for(it = le.waiting.begin();it<le.waiting.end();it++){
+     //find this id if it exists and update the xid       
+     std::string pend = *it;
+     if(pend == id){
+       tprintf("\nhad a duplicate acquire call\n");
+       lock_map[lid].xid_map[id] = xid;
+       break;
+     }     
+      
+    }
+    //if the id didnt exist push it back
+    if(it == le.waiting.end()){
+      lock_map[lid].waiting.push_back(id);
+      lock_map[lid].xid_map[id] = xid;
+     }
+    //send another revoke
+    rpc_call call;
+    call.rpc = lock_server_cache_rsm::REVOKE;
+    call.name = le.owner;
+    call.lock_id = lid;
+    call.xid = le.xid;
+    rpc_queue.enqueue(call);
+
 
   }else{
     //shouldnt get here
@@ -135,23 +168,35 @@ lock_server_cache_rsm::release(lock_protocol::lockid_t lid, std::string id,
          lock_protocol::xid_t xid, int &r)
 {
   ScopedLock sl(&mu);
-  tprintf("\nreleasing lock %llu on server from %s\n",lid,id.c_str());
+  tprintf("\nreleasing lock %llu on server from %s with xid %llu\n",lid,id.c_str(),xid);
   lock_protocol::status ret = lock_protocol::OK;
+
+  //ignore duplicate releases (if either owner or xid is wrong)
+  if(lock_map[lid].owner != id || lock_map[lid].xid != xid)
+    return ret;
+
   nacquire--;
-  //TODO do we need to do anything with xid here?
   if(lock_map[lid].waiting.empty()){
     //state should be LOCKED
     tprintf("\nno wait on the lock, freeing it\n");
     lock_map[lid].local_state = FREE;
+    //clear owner
+    lock_map[lid].owner = "";
   }else{
     //queue is not empty, send lock to next in line
     std::string next = lock_map[lid].waiting.front();
     tprintf("\nsending lock to next in line: %s\n",next.c_str());
     lock_map[lid].waiting.pop_front();
     lock_map[lid].owner = next;
+    //change xid and put it in rpc call
+    lock_map[lid].xid = lock_map[lid].xid_map[next];
+    lock_map[lid].xid_map.erase(next);
+
     rpc_call call;
     call.name = next;
     call.lock_id = lid;
+    call.xid = lock_map[lid].xid;
+    //see if there is anyone else waiting
     if(lock_map[lid].waiting.empty()){
       tprintf("\nno more wait after %s\n",next.c_str());
       lock_map[lid].local_state = LOCKED;
@@ -193,6 +238,17 @@ lock_server_cache_rsm::marshal_state()
     std::deque<std::string>::iterator qit;
     for(qit = le.waiting.begin();qit!=le.waiting.end();qit++){
       rep << *qit;
+ 
+    }    
+
+    //serialize xid_map
+    std::map<std::string,lock_protocol::xid_t>::iterator xit;
+    rep << le.xid_map.size();
+    for(xit = le.xid_map.begin();xit!=le.xid_map.end();xit++){
+      std::string wait = xit->first;
+      rep << wait;
+      rep << le.xid_map[wait]; 
+
 
     }
 
@@ -249,6 +305,19 @@ lock_server_cache_rsm::unmarshal_state(std::string state)
       le.waiting.push_back(wait);
 
     }
+
+    unsigned int xid_size;
+    rep >> xid_size;
+    unsigned int k;
+    for(k=0;k<xid_size;k++){
+      std::string wait;
+      rep >> wait;
+      unsigned long long wait_xid;
+      rep >> wait_xid;
+      le.xid_map[wait] = wait_xid;
+
+    }
+
     //lock_entry should be done, now put it in map
     lock_map[lid] = le;
 
@@ -270,7 +339,7 @@ int
 lock_server_cache_rsm::retry_helper(lock_protocol::lockid_t lid,std::string id,bool wait,lock_protocol::xid_t xid){
 
    int ret = rlock_protocol::OK;
-   tprintf("\nmaking a retry rpc call to %s\n",id.c_str());
+   tprintf("\nmaking a retry rpc call to %s with xid %llu\n",id.c_str(),xid);
    if(wait) {
      tprintf("\nThere is a wait on the server\n");        
    }
@@ -293,7 +362,7 @@ int
 lock_server_cache_rsm::revoke_helper(lock_protocol::lockid_t lid,std::string id,lock_protocol::xid_t xid,int &r){
 
    int ret = rlock_protocol::OK;
-   tprintf("\nmaking a revoke rpc call to %s\n",id.c_str());
+   tprintf("\nmaking a revoke rpc call to %s with xid %llu\n",id.c_str(),xid);
 
    handle h(id);
    rpcc *cl = h.safebind();
