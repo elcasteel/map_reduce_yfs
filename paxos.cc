@@ -153,7 +153,57 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
   // You fill this in for Lab 6
   // Note: if got an "oldinstance" reply, commit the instance using
   // acc->commit(...), and return false.
-  return false;
+  std::vector<std::string>::iterator it;
+  //set up arg
+  paxos_protocol::preparearg arg;
+  arg.n = my_n;
+  arg.instance = instance;
+  paxos_protocol::prepareres res;
+  prop_t max_n;
+  max_n.n=0;
+  int ret;
+
+  for(it = nodes.begin(); it< nodes.end(); it++){
+
+    printf("\nmaking a prepare rpc call to %s\n",(*it).c_str());
+    handle h(*it);
+    rpcc *cl = h.safebind();
+    if(cl){         
+      ret=cl->call(paxos_protocol::preparereq,me,arg,res,rpcc::to(1000));
+      if(ret==paxos_protocol::OK){
+	if(res.oldinstance){
+          printf("\nwe have an old instance!\n");
+	  acc->commit(instance,res.v_a);
+	  return false;
+        }
+	else if(res.accept){
+	  //add to acceptors
+	  accepts.push_back(*it);
+          printf("\nfor prop %u got back prop num %u, max_n is %u\n",arg.n.n,res.n_a.n,max_n.n);
+	  if(res.n_a>max_n){
+            max_n = res.n_a;
+            v = res.v_a;
+            printf("\n%s is value seen at largest n seen %u for prop %u\n",v.c_str(),max_n.n,arg.n.n);
+          }else{
+            printf("\nSomeone rejected a prepare\n");
+          }
+        }
+
+      }else{
+	printf("\nrpc call in prepare did not return OK\n");
+
+      }
+
+
+    }else {
+      printf("\nfailed to bind to an acceptor in prepare!\n");
+    }  
+
+  }
+
+
+
+  return true;
 }
 
 // run() calls this to send out accept RPCs to accepts.
@@ -163,6 +213,41 @@ proposer::accept(unsigned instance, std::vector<std::string> &accepts,
         std::vector<std::string> nodes, std::string v)
 {
   // You fill this in for Lab 6
+  std::vector<std::string>::iterator it;
+  //set up arg
+  paxos_protocol::acceptarg arg;
+  arg.instance = instance;
+  arg.n = my_n;
+  arg.v = v;
+  int ret;
+  bool accepted;
+
+  for(it = nodes.begin(); it< nodes.end(); it++){
+
+    printf("\nmaking an accept rpc call to %s\n",(*it).c_str());
+    handle h(*it);
+    rpcc *cl = h.safebind();
+    if(cl){         
+      ret=cl->call(paxos_protocol::acceptreq,me,arg,accepted,rpcc::to(1000));
+      if(ret==paxos_protocol::OK){
+
+         if(accepted){
+           accepts.push_back(*it);
+         }
+
+
+      }else{
+	printf("\nrpc call in accept did not return OK\n");
+
+      }
+
+
+    }else {
+      printf("\nfailed to bind to an acceptor in accept!\n");
+    }  
+
+  }
+
 }
 
 void
@@ -170,6 +255,36 @@ proposer::decide(unsigned instance, std::vector<std::string> accepts,
 	      std::string v)
 {
   // You fill this in for Lab 6
+  std::vector<std::string>::iterator it;
+  //set up arg
+  paxos_protocol::decidearg arg;
+  arg.instance = instance;
+  arg.v = v;
+  int ret;
+  int r;
+
+  for(it = accepts.begin(); it< accepts.end(); it++){
+
+    printf("\nmaking an decide rpc call to %s\n",(*it).c_str());
+    handle h(*it);
+    rpcc *cl = h.safebind();
+    if(cl){         
+      ret=cl->call(paxos_protocol::decidereq,me,arg,r,rpcc::to(1000));
+      if(ret==paxos_protocol::OK){
+
+        printf("\ndecide rpc call went OK\n");
+
+      }else{
+	printf("\nrpc call in decide did not return OK\n");
+
+      }
+
+
+    }else {
+      printf("\nfailed to bind to an acceptor in decide!\n");
+    }  
+
+  }
 }
 
 acceptor::acceptor(class paxos_change *_cfg, bool _first, std::string _me, 
@@ -203,6 +318,25 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
     paxos_protocol::prepareres &r)
 {
   // You fill this in for Lab 6
+  if(a.instance<=instance_h)
+  {
+    r.oldinstance=true;
+    r.v_a = values[instance_h];
+  }else if(a.n > n_h){
+    l->logprop(a.n);
+    n_h = a.n;
+    r.oldinstance = false;
+    r.n_a = n_a;
+    r.v_a = v_a;
+    r.accept = true;
+
+  }else{
+    r.accept = false;
+    r.oldinstance = false;
+  }
+
+
+
   return paxos_protocol::OK;
 
 }
@@ -212,6 +346,16 @@ paxos_protocol::status
 acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, bool &r)
 {
   // You fill this in for Lab 6
+  if(a.n >= n_h){
+    l->logaccept(a.n,a.v);
+    r = true;
+    n_a = a.n;
+    v_a = a.v;
+
+  }else{
+    r = false;
+  }  
+
 
   return paxos_protocol::OK;
 }
@@ -228,6 +372,7 @@ acceptor::decidereq(std::string src, paxos_protocol::decidearg a, int &r)
     commit_wo(a.instance, v_a);
   } else if (a.instance <= instance_h) {
     // we are ahead ignore.
+    printf("\nignoring decide call since we are ahead\n");
   } else {
     // we are behind
     VERIFY(0);

@@ -8,6 +8,8 @@
 
 #include "jsl_log.h"
 
+using namespace std;
+
 // Main loop of lock_server
 
 int
@@ -38,7 +40,7 @@ main(int argc, char *argv[])
 #define	RSM
 #ifdef RSM
 // You must comment out the next line once you are done with Step One.
-#define STEP_ONE 
+//#define STEP_ONE 
 #ifdef STEP_ONE
   rpcs server(atoi(argv[1]));
   lock_server_cache_rsm ls;
@@ -54,6 +56,7 @@ main(int argc, char *argv[])
   rsm.reg(lock_protocol::stat, &ls, &lock_server_cache_rsm::stat);
 #endif // STEP_ONE
 #endif // RSM
+
 
 
   while(1)

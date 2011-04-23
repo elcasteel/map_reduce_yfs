@@ -28,6 +28,15 @@ void
 rsm_client::primary_failure()
 {
   // You fill this in for Lab 7
+  //set primary as another of known members
+  if (known_mems.size() < 1) {
+    printf("rsm_client::init_members do not know any members!\n");  
+    VERIFY(0);
+  }           
+  //even if we get wrong one, as long as we connect, invoke will take care of finding real primary
+  primary = known_mems.back();
+  known_mems.pop_back();
+
 }
 
 rsm_protocol::status
