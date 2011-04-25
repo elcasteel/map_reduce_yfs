@@ -43,7 +43,7 @@ lock_server_cache_rsm::outgoing()
     //if not primary dont make rpc call
     if(!rsm->amiprimary()){
       tprintf("\nnot primary so wont make rpc call to client\n");
-      return;
+      continue;
     }
     
     int ret;

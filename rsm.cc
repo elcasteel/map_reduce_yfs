@@ -205,24 +205,55 @@ rsm::sync_with_backups()
   pthread_mutex_lock(&rsm_mutex);
   // Start accepting synchronization request (statetransferreq) now!
   insync = true;
-  // You fill this in for Lab 7
-  // Wait until
-  //   - all backups in view vid_insync are synchronized
-  //   - or there is a committed viewchange
+tprintf("sync_with_backups: start\n");
+  bool r = true;
+  backups = cfg->get_view(vid_insync);
+  std::vector<std::string>::iterator it;
+  for (it = backups.begin(); it != backups.end(); it++) {
+    if (*it == cfg->myaddr()) {
+      backups.erase(it);
+      break;
+    }
+  }
+  while (backups.size()) {
+    tprintf("sync_with_backups: %zd\n", backups.size());
+    struct timeval now;
+    struct timespec next_timeout;
+    gettimeofday(&now, NULL);
+    next_timeout.tv_sec = now.tv_sec + 3;
+    next_timeout.tv_nsec = 0;
+    pthread_cond_timedwait(&sync_cond, &rsm_mutex, &next_timeout);
+    if (vid_commit != vid_insync) {
+      r = false;
+      break;
+    }
+  }
+  tprintf("sync_with_backups: done %d\n", r);
   insync = false;
-  return true;
+  return r;
 }
 
 
 bool
 rsm::sync_with_primary()
 {
-  // Remember the primary of vid_insync
-  std::string m = primary;
-  // You fill this in for Lab 7
   // Keep synchronizing with primary until the synchronization succeeds,
   // or there is a commited viewchange
-  return true;
+   // Remember the primary of vid_insync
+  std::string m = primary;
+  while (vid_commit == vid_insync) {
+    if (statetransfer(m)) {
+      tprintf("sync_with_primary: transfer done\n");
+      if (statetransferdone(m)) {
+        tprintf("sync_with_primary: sync done: done\n");
+        return true;
+      }
+    }
+    VERIFY(pthread_mutex_unlock(&rsm_mutex) == 0);
+    sleep(1);
+    VERIFY(pthread_mutex_lock(&rsm_mutex) == 0);
+  }
+  return false;
 }
 
 
@@ -262,8 +293,22 @@ rsm::statetransfer(std::string m)
 
 bool
 rsm::statetransferdone(std::string m) {
-  // You fill this in for Lab 7
-  // - Inform primary that this slave has synchronized for vid_insync
+handle h(m);
+  int dummy;
+  int ret;
+  tprintf("rsm::statetransferdone: %s\n", m.c_str());
+  VERIFY(pthread_mutex_unlock(&rsm_mutex)==0);
+  rpcc *cl = h.safebind();
+  if (cl != 0) {
+    ret = cl->call(rsm_protocol::transferdonereq, cfg->myaddr(), 
+	           vid_insync, dummy, rpcc::to(1000));
+  }
+  VERIFY(pthread_mutex_lock(&rsm_mutex)==0);
+  if (cl == 0 || ret != rsm_protocol::OK) {
+    tprintf("rsm::statetransferdone: couldn't reach %s %lx %d\n", m.c_str(), 
+	   (long unsigned) cl, ret);
+    return false;
+  }
   return true;
 }
 
@@ -303,6 +348,7 @@ rsm::commit_change(unsigned vid)
 {
   ScopedLock ml(&rsm_mutex);
   commit_change_wo(vid);
+  
 }
 
 void 
@@ -346,15 +392,15 @@ rsm::execute(int procno, std::string req)
 rsm_client_protocol::status
 rsm::client_invoke(int procno, std::string req, std::string &r)
 {
+  pthread_mutex_lock(&rsm_mutex);
   tprintf("\nHandling client_invoke\n");
   int ret = rsm_client_protocol::OK;
   // You fill this in for Lab 7
-  if(!amiprimary()){
+  if(primary != cfg->myaddr()){
   tprintf("\nNot a primary!\n");
   pthread_mutex_unlock(&rsm_mutex);
   return rsm_client_protocol::NOTPRIMARY;
   }
-  pthread_mutex_lock(&rsm_mutex);
   tprintf("\nI am the master, so proceeding\n");
   if(inviewchange){
   tprintf("\nIn the middle of a view change, so busy\n");
@@ -373,8 +419,14 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
   tprintf("\nReplicating call to backups\n");
   //iterate over all backups and send invoke rpc
   std::vector<std::string>::iterator it;
-  for(it = backups.begin();it<backups.end();it++){
+  std::vector<std::string> mems;
+  mems = cfg->get_view(vid_commit);
+  for(it = mems.begin();it<mems.end();it++){
+    //ignore ourselves
+    if (*it == cfg->myaddr()) continue;
+
     tprintf("\nmaking a prepare rpc call to %s\n",(*it).c_str());
+    tprintf("\nwith veiwstamp seqno %d and vid %d\n",n_vs.seqno,n_vs.vid);
     handle h(*it);
     rpcc *cl = h.safebind();
     if(cl){
@@ -382,6 +434,8 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
       if(ret!=rsm_protocol::OK){
         //no good
    	tprintf("\nsome backup invoke failed\n");
+        //reset vs
+        myvs.seqno--;
         return rsm_client_protocol::ERR;
       }
       
@@ -389,7 +443,10 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
       tprintf("\nfailed to bind!\n");
       return rsm_client_protocol::BUSY;
     }
-
+    //for testing calling breakpoint1 after 1 replica has recieved call, test 12
+    breakpoint1();
+    //test 16
+    partition1();
   }
   //if we get here then all backups have been updated
   r = execute(procno,req);
@@ -423,12 +480,14 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
   //make sure vs is right
   if(vs.seqno!=myvs.seqno || vs.vid!=myvs.vid){
     tprintf("\nDidnt get the viewstamp I expected in backup invoke call\n");
+    tprintf("\n\expected veiwstamp seqno %d and vid %d\n",myvs.seqno,myvs.vid);
     return rsm_protocol::ERR;
   }
   //update myvs
   myvs.seqno++;
   execute(proc,req);
-
+  //for test 13
+  breakpoint1();
   return ret;
 }
 
@@ -467,6 +526,21 @@ rsm::transferdonereq(std::string m, unsigned vid, int &)
   //   for the same view with me
   // - Remove the slave from the list of unsynchronized backups
   // - Wake up recovery thread if all backups are synchronized
+  tprintf("transferdonereq: src %s, vid %d, nbackup %zd, insync %d, "
+         "vid_insync %d\n", m.c_str(), vid, backups.size(), insync, vid_insync);
+  if (!insync || vid != vid_insync) {
+    return rsm_protocol::BUSY;
+  }
+  std::vector<std::string>::iterator it;
+  for (it = backups.begin(); it != backups.end(); it++) {
+    if (*it == m) {
+      backups.erase(it);
+      break;
+    }
+  }
+  if (!backups.size()) {
+    pthread_cond_signal(&sync_cond);
+  }
   return ret;
 }
 
@@ -599,19 +673,24 @@ rsm::test_net_repairreq(int heal, int &r)
 void 
 rsm::breakpoint1()
 {
+  tprintf("\ncalling breakpoint1\n");
   if (break1) {
     tprintf("Dying at breakpoint 1 in rsm!\n");
     exit(1);
   }
+  tprintf("\nbreakpoint1 did not occur\n");
+
 }
 
 void 
 rsm::breakpoint2()
 {
+  tprintf("\ncalling breakpoint2\n");
   if (break2) {
     tprintf("Dying at breakpoint 2 in rsm!\n");
     exit(1);
   }
+  tprintf("\nbreakpoint2 did not occur\n");
 }
 
 void 
