@@ -23,9 +23,11 @@ std::map <unsigned,std::string>mapper_nodes;
 //map job_id -> input_file (key)
 std::map <unsigned,std::string>reducer_nodes;
 input_reader reader;
-virtual input_reader get_input_reader();
+virtual input_reader get_input_reader(std::string input_dir);
+pthread_mutex_t map_m;
 
 public:
 void map_reduce(std::string input_file, std::string output_file);
 master(class config *c);
+std::string getMember();
 }
