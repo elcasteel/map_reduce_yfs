@@ -145,7 +145,7 @@ master::reducer_done(std::string job_id,std::string output_file)
      pthread_mutex_lock(&map_m);
      if(reducer_nodes.find(job_id) != reducer_nodes.end())
      {
-	 reducer_outputs[job_id] = output_file;
+	 reducer_outputs[atoi(job_id.c_str())] = output_file;
          reducer_nodes.erase(job_id);
      }
      if(reducers_nodes.empty())
@@ -154,4 +154,37 @@ master::reducer_done(std::string job_id,std::string output_file)
      return 0;
 }
 
+input_reader
+sort_master::get_input_reader(std::string input_dir){
+  return linesplit_input_reader(input_dir,10);
+}
+
+
+void 
+sort_master::merge(std::string output_file){
+
+  //open output file
+  fstream outfile(output_file);
+
+  //iterate through reducer_outputs map
+  std::map <unsigned, std::string>::iterator it;
+  //TODO ensure that the keys are sorted
+  for(it = reducer_outputs.begin();it!=reducer_outputs.end();it++){
+    //write each file to the output file
+    ifstream ifs ( reducer_outputs[*it] , ifstream::in );
+    char *buf;
+    while(ifs.good()){
+      ifs.read(buf,256);
+      outfile << buf;
+    }
+    ifs.close()
+  }
+
+
+
+
+  //close and return
+  outfile.close();
+
+}
 

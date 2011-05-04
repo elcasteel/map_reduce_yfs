@@ -28,6 +28,5 @@ void start_reduce(std::string input_file,std::string output_file);
 int new_job(job_type t, std::string input,unsigned job_id, std::string master_id);
 class *master m;
 bool amiprimary();
-//std::vector<std::string> geti_members();
 }
 
