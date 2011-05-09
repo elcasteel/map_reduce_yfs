@@ -1,7 +1,7 @@
 #ifndef paxos_protocol_h
 #define paxos_protocol_h
 
-#include "rpc.h"
+#include "rpc/rpc.h"
 
 struct prop_t {
   unsigned n;

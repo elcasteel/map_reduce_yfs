@@ -10,7 +10,7 @@
 #include <time.h>
 #include <errno.h>
 #include "slock.h"
-#include "lang/verify.h"
+#include "../lang/verify.h"
 
 template<class T>
 class fifo {

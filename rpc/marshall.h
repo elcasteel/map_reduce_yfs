@@ -8,8 +8,8 @@
 #include <map>
 #include <stdlib.h>
 #include <string.h>
-#include "lang/verify.h"
-#include "lang/algorithm.h"
+#include "../lang/verify.h"
+#include "../lang/algorithm.h"
 
 struct req_header {
 	req_header(int x=0, int p=0, int c = 0, int s = 0, int xi = 0):

@@ -2,7 +2,7 @@
 #define __SCOPED_LOCK__
 
 #include <pthread.h>
-#include "lang/verify.h"
+#include "../lang/verify.h"
 struct ScopedLock {
 	private:
 		pthread_mutex_t *m_;

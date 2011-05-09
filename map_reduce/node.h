@@ -1,3 +1,6 @@
+#ifndef NODE
+#define NODE
+
 #include "../rpc/rpc.h"
 #include "../tprintf.h"
 #include "../config.h"
@@ -5,6 +8,10 @@
 #include <pthread.h>
 #include "../threaded_queue.h"
 #include "../paxos.h"
+#include "mapper.h"
+#include "reducer.h"
+#include "master.h"
+
 class node:config_view_change{
 
 private:
@@ -13,20 +20,21 @@ std::string primary;
 std::string myid;
 pthread_mutex_t view_mutex;
 rpcs* rpc_server;
-struct rpc_call{
-        
-        job_type type;
-        std::string input;
-        std::master_id;
-        unsigned job_id;
-  };
-
-threaded_queue<rpc_call> rpc_queue;
 
 public:
 //rpc enums
 //enum CALL {JOB };
 enum job_type{ MAP=0x10001,REDUCE, MAP_REDUCE,MAP_DONE,REDUCE_DONE};
+ 
+struct rpc_call{
+        
+        job_type type;
+        std::string input;
+        std::string master_id;
+        unsigned job_id;
+  };
+
+threaded_queue<rpc_call> rpc_queue;
 
 
 unsigned last_master_id;
@@ -54,6 +62,7 @@ void do_reduce(void *args);
 std::map<unsigned,class *master m> master_map;
 //bool amiprimary();
 };
+
 struct do_map_args
 {
    mapper *m; 
@@ -70,3 +79,4 @@ struct do_reduce_args
    std::string file_list;
 };
 
+#endif

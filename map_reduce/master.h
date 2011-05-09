@@ -1,7 +1,11 @@
+#ifndef MASTER
+#define MASTER
+
 #include <string>
-#include <time>
+#include <time.h>
 #include <map>
 #include "input_reader.h"
+
 
 class master{
 
@@ -41,3 +45,4 @@ protected:
    void merge(std::string output_file);
     
 };
+#endif

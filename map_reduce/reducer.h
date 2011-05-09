@@ -1,5 +1,9 @@
+#ifndef REDUCER
+#define REDUCER
+
 #include <string>
 #include <vector> 
+
 class reducer{
 
 public:
@@ -16,3 +20,4 @@ void reduce(std::string, std::vector<std::string> values,std::string output_file
 void parse_intermediate(std::string filename);
   
 }
+#endif

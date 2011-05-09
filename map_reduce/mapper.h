@@ -1,4 +1,8 @@
+#ifndef MAPPER
+#define MAPPER
+
 #include <string>
+
 class mapper{
 mapper(std::string _input_file, std::string _output_file);
 std::string input_file;
@@ -27,3 +31,4 @@ sort_mapper(int min, int max, unsigned k)
 void emit_intermediate(std::string key, std::string value);
 
 };
+#endif

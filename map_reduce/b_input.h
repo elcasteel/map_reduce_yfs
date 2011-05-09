@@ -4,11 +4,10 @@
 #include <string>
 #include <vector>
 #include <dirent.h>
-#include "../lang/verify.h"
+#include "lang/verify.h"
 #include <iostream>
 #include <fstream>
-#include <sys/stat.h>
-#include <sstream>
+
 
 class input_reader{
 protected:
@@ -17,6 +16,7 @@ std::string mydir;
 unsigned index, num_pieces;
 
 public:
+input_reader(std::string input_dir,unsigned pieces);
 virtual std::string get_next_file();
 
 
@@ -38,7 +38,8 @@ linesplit_input_reader(std::string input_dir,unsigned pieces){
   //store initial files
   DIR *dp;
   struct dirent *dirp;
-  if((dp  = opendir(mydir.c_str())) == NULL) {
+  if((dp  = opendir(dir.c_str())) == NULL) {
+      cout << "Error(" << errno << ") opening " << dir << endl;
       VERIFY(0);
   }
 
@@ -47,7 +48,7 @@ linesplit_input_reader(std::string input_dir,unsigned pieces){
   int r;
   off_t total = 0;
   while ((dirp = readdir(dp)) != NULL) {
-      init_files.push_back(std::string(dirp->d_name));
+      init_files.push_back(string(dirp->d_name));
        r = stat(dirp->d_name,&stFileInfo); 
        VERIFY(r);
        size_map[dirp->d_name] = stFileInfo.st_size;
@@ -61,12 +62,12 @@ linesplit_input_reader(std::string input_dir,unsigned pieces){
 
 virtual std::string get_next_file(){
 
-  if(index >= num_pieces) return NULL;
+  if(index >= pieces) return NULL;
   //output file
-  std::stringstream ss;
+  stringstream ss;
   ss << index;
-  std::string name= ss.str();
-  std::ofstream outfile (name.c_str());
+  std::string name= ss.string();
+  ofstream outfile (name);
 
   
 
@@ -76,7 +77,9 @@ virtual std::string get_next_file(){
   off_t dataread =0;
   while(dataread<bytes && init_files.size()){
     //inp file
-    std::ifstream stream(init_files.back().c_str());
+    filebuf file;
+    file.open(init_files.back(),ios::in);
+    ifstream stream(&file);
     
     //check file size
     if(size_map[init_files.back()]-curr_offset < bytes-dataread){
@@ -89,7 +92,7 @@ virtual std::string get_next_file(){
       outfile << buf;
 
       //change file & remove old
-      stream.close();
+      file.close()
       init_files.pop_back();
 
      //reset offset
@@ -104,7 +107,7 @@ virtual std::string get_next_file(){
       outfile << buf;
       //read line
       stream.getline(buf,size_map[init_files.back()]);
-      outfile << buf;
+      outfile << buff;
 
       //increment curr_offset 
       curr_offset = stream.tellg();
