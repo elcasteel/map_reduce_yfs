@@ -11,6 +11,7 @@
 #include "mapper.h"
 #include "reducer.h"
 #include "master.h"
+#include <map>
 
 class node:config_view_change{
 
@@ -59,9 +60,8 @@ void reducer_done(unsigned master_id,std::string job_id, std::string output_file
 void do_map(void* args);
 void do_reduce(void *args);
 
-std::map<unsigned,class *master m> master_map;
+std::map<unsigned,master*> master_map;
 //bool amiprimary();
-};
 
 struct do_map_args
 {
@@ -78,5 +78,10 @@ struct do_reduce_args
    std::string output_file; 
    std::string file_list;
 };
+
+
+
+};
+
 
 #endif
