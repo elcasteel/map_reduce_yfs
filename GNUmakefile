@@ -7,8 +7,6 @@ LAB4GE=$(shell expr $(LAB) \>\= 4)
 LAB5GE=$(shell expr $(LAB) \>\= 5)
 LAB6GE=$(shell expr $(LAB) \>\= 6)
 LAB7GE=$(shell expr $(LAB) \>\= 7)
-LAB8GE=$(shell expr $(LAB) \>\= 8)
-
 CXXFLAGS =  -g -MMD -Wall -I. -I$(RPC) -DLAB=$(LAB) -DSOL=$(SOL) -D_FILE_OFFSET_BITS=64
 FUSEFLAGS= -D_FILE_OFFSET_BITS=64 -DFUSE_USE_VERSION=25 -I/usr/local/include/fuse -I/usr/include/fuse
 ifeq ($(shell uname -s),Darwin)
@@ -43,7 +41,6 @@ lab4: yfs_client extent_server lock_server lock_tester test-lab-3-b\
 lab5: yfs_client extent_server lock_server test-lab-3-b test-lab-3-c
 lab6: lock_server rsm_tester
 lab7: lock_tester lock_server rsm_tester
-lab8: yfs_client extent_server lock_server map_reduce/node map_reduce/map_reduce_tester
 
 hfiles1=rpc/fifo.h rpc/connection.h rpc/rpc.h rpc/marshall.h rpc/method_thread.h\
 	rpc/thr_pool.h rpc/pollmgr.h rpc/jsl_log.h rpc/slock.h rpc/rpctest.cc\
@@ -53,7 +50,6 @@ hfiles2=yfs_client.h extent_client.h extent_protocol.h extent_server.h
 hfiles3=lock_client_cache.h lock_server_cache.h handle.h tprintf.h
 hfiles4=log.h rsm.h rsm_protocol.h config.h paxos.h paxos_protocol.h rsm_state_transfer.h rsmtest_client.h tprintf.h
 hfiles5=rsm_state_transfer.h rsm_client.h
-
 rsm_files = rsm.cc paxos.cc config.cc log.cc handle.cc
 
 rpclib=rpc/rpc.cc rpc/connection.cc rpc/pollmgr.cc rpc/thr_pool.cc rpc/jsl_log.cc gettime.cc
@@ -114,13 +110,6 @@ test-lab-4-c:  $(patsubst %.c,%.o,$(test_lab_4-c)) rpc/librpc.a
 rsm_tester=rsm_tester.cc rsmtest_client.cc
 rsm_tester:  $(patsubst %.cc,%.o,$(rsm_tester)) rpc/librpc.a
 
-map_reduce/node = map_reduce/node_main.cc map_reduce/node.cc map_reduce/mapper.cc map_reduce/reducer.cc map_reduce/master.cc
-map_reduce/node : $(patsubst %.cc,%.o,$(node)) rpc/librpc.a
-
-map_reduce/map_reduce_tester = map_reduce/job_main.cc
-map_reduce/map_reduce_tester : $(patsubst %.cc,%.o,$(map_reduce_tester)) rpc/librpc.a
-
-
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
@@ -133,7 +122,7 @@ fuse.o: fuse.cc
 -include *.d
 -include rpc/*.d
 
-clean_files=rpc/rpctest rpc/*.o rpc/*.d rpc/librpc.a *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest test-lab-3-b test-lab-3-c rsm_tester map_reduce/node map_reduce/map_reduce_tester map_reduce/*.o
+clean_files=rpc/rpctest rpc/*.o rpc/*.d rpc/librpc.a *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest test-lab-3-b test-lab-3-c rsm_tester
 .PHONY: clean handin
 clean: 
 	rm $(clean_files) -rf 
