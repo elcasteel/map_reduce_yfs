@@ -3,16 +3,26 @@
 void
 reducer::start_reduce(std::string input, std::string output)
 {
-    std::vector<std::string> values = parse_intermediate(input);
+    parse_file_list(input);
     reduce(values,output);
     
 }
-
-std::vector<std::string>
-sort_reducer::parse_intermediate(std::string filename)
+void
+reducer::parse_file_list(std::string file_list)
 {
-  ifstream ifs(input_file,ifstream::in);
-  std::vector<std::string> values;
+    stringstream files(file_list);
+    while(files.good())
+    {
+	std::string input_file;
+	std::getline(files,input_file );
+        parse_intermediate(input_file);
+    }
+}
+void
+sort_reducer::parse_intermediate(std::string input_file)
+{
+  ifstream ifs(input_file);
+ // std::vector<std::string> values;
   while( ifs.good() )
   {
       int cur;

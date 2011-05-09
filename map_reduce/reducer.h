@@ -4,13 +4,15 @@ class reducer{
 
 public:
 virtual void reduce(std::string, std::vector<std::string> values,std::string output_file);
-virtual std::vector<std::string> parse_intermediate(std::string filename);
+virtual void parse_intermediate(std::string filename);
 void start_reduce(std::string input, std::string output);
+std::vector<std::string> values;
+void parse_file_list(std::string file_list);
 }
 
 class sort_reducer:reducer
 {
 void reduce(std::string, std::vector<std::string> values,std::string output_file);
-std::vector<std::string> parse_intermediate(std::string filename);
+void parse_intermediate(std::string filename);
   
 }

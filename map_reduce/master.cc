@@ -3,8 +3,9 @@
 #include "node.h"
 #include "dirent.h"
 
-master::master(class config *c){
+master::master(class config *c, std::string _master_id){
   cfg = c;
+  my_master_id = _master_id;
   pthread_mutex_init(&map_m);
   pthread_cond_init(&all_mappers_done);
   pthread_cond_init(&all_reducers_done);
@@ -79,7 +80,7 @@ master::start_mappers()
          std::string file = mapper_nodes[key];
          pthread_mutex_unlock(&map_m);
          if(cl){
-            ret = cl->call(node::JOB,node::MAP, file,key, cfg->myaddr());
+            ret = cl->call(node::JOB,node::MAP, file,key, my_master_id);
          } else {
              printf("bind() failed\n");
           }
@@ -105,7 +106,7 @@ master::start_reducers()
          std::string file = reducer_nodes[key];
          pthread_mutex_unlock(&map_m);
          if(cl){
-            ret = cl->call(node::JOB,node::REDUCE, file,key, cfg->myaddr());
+            ret = cl->call(node::JOB,node::REDUCE, file,key, my_master_id);
          } else {
              printf("bind() failed\n");
           }

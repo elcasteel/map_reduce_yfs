@@ -7,6 +7,7 @@ class master{
 
 protected:
 class config *cfg;
+unsigned my_master_id;
 virtual void merge(std::string output_file);
 unsigned calls;
 time_t start_time;
@@ -30,7 +31,7 @@ pthread_mutex_t map_m;
 
 public:
 void map_reduce(std::string input_file, std::string output_file);
-master(class config *c);
+master(class config *c,std::string _master_id);
 std::string getMember();
 };
 

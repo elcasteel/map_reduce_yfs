@@ -2,8 +2,16 @@
 #include <iostream>
 #include <fstream>
 
+
+map::map(std::string _input_file, std::string _output_dir)
+{
+   input_file = _input_file;
+   output_dir = _output_dir;
+}
 void
-sort_mapper::map(std::string input_file, std::string output_dir, unsigned job_id, std::string master_node_id)
+sort_mapper::map()
+//old arguments
+//std::string input_file, std::string output_dir, unsigned job_id, std::string master_node_id)
 {
 //open the file
 ifstream ifs(input_file,ifstream::in);
