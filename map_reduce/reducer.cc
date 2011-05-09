@@ -1,4 +1,5 @@
 #include "reducer.h"
+#include <list>
 
 void
 reducer::start_reduce(std::string input, std::string output)
@@ -10,7 +11,7 @@ reducer::start_reduce(std::string input, std::string output)
 void
 reducer::parse_file_list(std::string file_list)
 {
-    stringstream files(file_list);
+    std::stringstream files(file_list);
     while(files.good())
     {
 	std::string input_file;
@@ -21,41 +22,41 @@ reducer::parse_file_list(std::string file_list)
 void
 sort_reducer::parse_intermediate(std::string input_file)
 {
-  ifstream ifs(input_file);
+  std::ifstream ifs(input_file.c_str());
  // std::vector<std::string> values;
   while( ifs.good() )
   {
       int cur;
       ifs >> cur;
-      ostringstream value_stream; 
+      std::ostringstream value_stream; 
       value_stream << cur;
-      values.append(value_stream.str());
+      values.push_back(value_stream.str());
   }
   ifs.close();
-  return values;
+  
 }
 void 
-sort_reducer::reduce(std::string, std::vector<std::string> values,std::string output_file)
+sort_reducer::reduce(std::vector<std::string> values,std::string output_file)
 {
   //convert the strings to ints and sort them   
   std::list<int> int_values;
   for(int i = 0; i < values.size(); i++)
   {
-     istringstream value_stream(values[i]);
+     std::istringstream value_stream(values[i].c_str());
      int value_int;
      value_stream >> value_int;
-     int_values.append(value_int);
+     int_values.push_back(value_int);
   }
   //sort
   int_values.sort();
   //write to the output file
 
-  ofstream output_stream(output_file);
+  std::ofstream output_stream(output_file.c_str());
   while(int_values.size())
   { 
      output_stream << int_values.front();
      int_values.pop_front();
   }
-  ofstream.close();
+  output_stream.close();
 } 
 

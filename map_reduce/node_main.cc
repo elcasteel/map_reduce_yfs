@@ -14,7 +14,7 @@ main(int argc,char *argv[])
   }
 
   //init node
-  node *n = new node(argv[1],argv[2]);
+  node *n = new sort_node(argv[1],argv[2]);
   //sleep
   while(1)
     sleep(1000);

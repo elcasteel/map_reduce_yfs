@@ -23,6 +23,8 @@ pthread_mutex_t view_mutex;
 rpcs* rpc_server;
 
 public:
+
+
 //rpc enums
 //enum CALL {JOB };
 enum job_type{ MAP=0x10001,REDUCE, MAP_REDUCE,MAP_DONE,REDUCE_DONE};
@@ -49,20 +51,23 @@ void commit_change(unsigned vid);
 
 //rpc handlers
 
-void start_map(std::string initial_data, unsigned job_id,unsigned master_id, int &a);
-void start_reduce(std::string file_list, std::string job_id, unsigned master_id, int &a);
-void start_map_reduce(std::string input_file, std::string output_file,int &a);
+int start_map(std::string initial_data, unsigned job_id,unsigned master_id, int &a);
+int start_reduce(std::string file_list, std::string job_id, unsigned master_id, int &a);
+int start_map_reduce(std::string input_file, std::string output_file,int &a);
 
-void mapper_done(unsigned master_id, std::string dir,unsigned job_id, int &a);
-void reducer_done(unsigned master_id,std::string job_id, std::string output_file, int &a); 
+int mapper_done(unsigned master_id, std::string dir,unsigned job_id, int &a);
+int reducer_done(unsigned master_id,std::string job_id, std::string output_file, int &a); 
 //rpc handler
 //int new_job(job_type t, std::string input,unsigned job_id, std::string master_id);
 
-void do_map(void* args);
-void do_reduce(void *args);
 
 std::map<unsigned,master*> master_map;
 //bool amiprimary();
+
+
+
+
+};
 
 struct do_map_args
 {
@@ -70,6 +75,8 @@ struct do_map_args
    unsigned job_id; 
    unsigned master_id;
    std::string output_dir;
+   std::string primary;
+
 };
 struct do_reduce_args
 {
@@ -78,16 +85,24 @@ struct do_reduce_args
    unsigned master_id;
    std::string output_file; 
    std::string file_list;
+   std::string primary;
 };
 
 
+void* do_map(void *args);
+void* do_reduce(void *args);
 
-};
 
-class sort_node:node
+class sort_node:public node
 {
 mapper* get_mapper(std::string input_file, std::string intermediate_dir);
 reducer* get_reducer();
 master* get_master(config *cfg, unsigned master_id);
+public:
+sort_node(std::string first,std::string me):node(first,me){}
+
+
 };
+
+
 #endif

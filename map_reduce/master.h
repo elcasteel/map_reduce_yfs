@@ -17,10 +17,6 @@ unsigned calls;
 time_t start_time;
 void start_mappers();
 void start_reducers();
-//receive done message from a mapper
-int mapper_done(unsigned job_id, std::string intermediate_dir);
-//receive done message from a reducer
-int reducer_done(std::string job_id,std::string output_file);
 pthread_cond_t all_mappers_done;
 pthread_cond_t all_reducers_done;
 //map job_id -> input_dir
@@ -34,6 +30,11 @@ virtual input_reader get_input_reader(std::string input_dir);
 pthread_mutex_t map_m;
 
 public:
+//receive done message from a mapper
+int mapper_done(unsigned job_id, std::string intermediate_dir);
+//receive done message from a reducer
+int reducer_done(std::string job_id,std::string output_file);
+
 void map_reduce(std::string input_file, std::string output_file);
 master(class config *c,unsigned _master_id);
 std::string getMember();
@@ -43,6 +44,8 @@ class sort_master:public master{
 protected:
    input_reader get_input_reader(std::string input_dir);
    void merge(std::string output_file);
+public:
+   sort_master(class config *c,unsigned _master_id):master(c,_master_id){}
     
 };
 #endif

@@ -9,6 +9,7 @@ std::string input_file;
 std::string output_dir;
 unsigned job;
 std::string master;
+public:
 //called by node 
 virtual void map();
 //old arguments
@@ -20,6 +21,8 @@ virtual void emit_intermediate(std::string key, std::string value);
 class sort_mapper:public mapper{
 int _min, _max;
 unsigned _k;
+
+public:
 sort_mapper(int min, int max, unsigned k, std::string _input_file, std::string _output_dir)
 {
     _min = min; 
