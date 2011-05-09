@@ -35,11 +35,11 @@ pthread_mutex_t map_m;
 
 public:
 void map_reduce(std::string input_file, std::string output_file);
-master(class config *c,std::string _master_id);
+master(class config *c,unsigned _master_id);
 std::string getMember();
 };
 
-class sort_master{
+class sort_master:public master{
 protected:
    input_reader get_input_reader(std::string input_dir);
    void merge(std::string output_file);

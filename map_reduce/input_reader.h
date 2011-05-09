@@ -22,7 +22,7 @@ virtual std::string get_next_file();
 
 };
 
-class linesplit_input_reader:input_reader{
+class linesplit_input_reader:public input_reader{
 private:
   std::vector<std::string> init_files;
   std::map<std::string,off_t> size_map;
@@ -59,9 +59,9 @@ linesplit_input_reader(std::string input_dir,unsigned pieces){
 }
 
 
-virtual std::string get_next_file(){
+std::string get_next_file(){
 
-  if(index >= num_pieces) return NULL;
+  if(index >= num_pieces) return "";
   //output file
   std::stringstream ss;
   ss << index;

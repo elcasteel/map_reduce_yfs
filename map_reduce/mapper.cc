@@ -1,20 +1,16 @@
 #include "mapper.h"
 #include <iostream>
 #include <fstream>
+//#include <ifstream>
+#include <sstream>
 
-
-map::map(std::string _input_file, std::string _output_dir)
-{
-   input_file = _input_file;
-   output_dir = _output_dir;
-}
 void
 sort_mapper::map()
 //old arguments
 //std::string input_file, std::string output_dir, unsigned job_id, std::string master_node_id)
 {
 //open the file
-ifstream ifs(input_file,ifstream::in);
+std::ifstream ifs(input_file.c_str());
 //while there is data in the file
    int size = (_max - _min)/_k;
    while(ifs.good())
@@ -23,13 +19,13 @@ ifstream ifs(input_file,ifstream::in);
       int cur;
       ifs >> cur;
 //decide which bucket
-      int bucket = (cur-min)/size;
+      int bucket = (cur-_min)/size;
 //put the value in the bucket with emit_intermediate
-      std::ostringstream out;
+      std::stringstream out(std::stringstream::in);
       out <<output_dir.c_str();
       out << "/";
       out << bucket;
-      std::ostringstream value_string;
+      std::stringstream value_string(std::stringstream::in);
       value_string << cur;
       emit_intermediate(out.str(), value_string.str());
    }
@@ -41,7 +37,7 @@ ifstream ifs(input_file,ifstream::in);
 void
 sort_mapper::emit_intermediate(std::string key, std::string value)
 {
-    ofstream outfile(key,ofstream::app);
+    std::ofstream outfile(key.c_str(),std::ofstream::app);
     std::istringstream value_stream(value);
     int value_int;
     value_stream >> value_int;

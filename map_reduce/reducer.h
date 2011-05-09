@@ -14,7 +14,7 @@ std::vector<std::string> values;
 void parse_file_list(std::string file_list);
 }
 
-class sort_reducer:reducer
+class sort_reducer:public reducer
 {
 void reduce(std::string, std::vector<std::string> values,std::string output_file);
 void parse_intermediate(std::string filename);

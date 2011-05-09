@@ -2,13 +2,14 @@
 #include <string>
 #include "node.h"
 #include "dirent.h"
+#include "../handle.h"
 
 master::master(class config *c, unsigned _master_id){
   cfg = c;
   my_master_id = _master_id;
-  pthread_mutex_init(&map_m);
-  pthread_cond_init(&all_mappers_done);
-  pthread_cond_init(&all_reducers_done);
+  pthread_mutex_init(&map_m, NULL);
+  pthread_cond_init(&all_mappers_done, NULL);
+  pthread_cond_init(&all_reducers_done, NULL);
 }
 
 void 
@@ -20,7 +21,7 @@ master::map_reduce(std::string input_file, std::string output_file){
   std::string inp_file;
   unsigned job_id = 0;
   pthread_mutex_lock(&map_m);  
-  while((inp_file=reader.get_next_file())!=NULL){
+  while((inp_file=reader.get_next_file())!=""){
     mapper_nodes[job_id] = inp_file;
     job_id++;
 
@@ -34,7 +35,7 @@ master::map_reduce(std::string input_file, std::string output_file){
      //wait on jobs to finish
      timespec tp;
      clock_gettime(CLOCK_REALTIME, &tp);
-     acquire_tp.tv_sec += acquire_delay;
+     tp.tv_sec += acquire_delay;
      acquire_delay = acquire_delay *2;
      pthread_cond_timedwait(&all_mappers_done,&map_m,&tp);
   
@@ -48,7 +49,7 @@ master::map_reduce(std::string input_file, std::string output_file){
      //wait on jobs to finish
      timespec tp;
      clock_gettime(CLOCK_REALTIME, &tp);
-     acquire_tp.tv_sec += acquire_delay;
+     tp.tv_sec += acquire_delay;
      acquire_delay = acquire_delay *2;
      pthread_cond_timedwait(&all_reducers_done,&map_m,&tp);
   
@@ -76,11 +77,12 @@ master::start_mappers()
          //ask the node to start a new map job 
          handle h(node_id);
          rpcc *cl = h.safebind();
-         unsigned key =*it;
+         unsigned key =it->first;
          std::string file = mapper_nodes[key];
          pthread_mutex_unlock(&map_m);
          if(cl){
-            ret = cl->call(node::JOB,node::MAP, file,key, my_master_id);
+            int a;
+            int ret = cl->call(node::MAP, file,key, my_master_id,a);
          } else {
              printf("bind() failed\n");
           }
@@ -93,7 +95,7 @@ void
 master::start_reducers()
 {
     //assume we are already holding map_mutex
-    std::map <unsigned,std::string> ::iterator it;
+    std::map <std::string,std::string> ::iterator it;
     for(it=reducer_nodes.begin(); it!= reducer_nodes.end();it++)
     {
          //choose a random node
@@ -102,11 +104,12 @@ master::start_reducers()
          //ask the node to start a new map job 
          handle h(node_id);
          rpcc *cl = h.safebind();
-         unsigned key =*it;
+         std::string key =it->first;
          std::string file_list = reducer_nodes[key];
          pthread_mutex_unlock(&map_m);
          if(cl){
-            ret = cl->call(node::JOB,node::REDUCE, file_list,key, my_master_id);
+            int a; 
+           int ret = cl->call(node::REDUCE, file_list,key, my_master_id,a);
          } else {
              printf("bind() failed\n");
           }
@@ -123,7 +126,7 @@ master::mapper_done(unsigned job_id, std::string intermediate_dir)
          //look up the directory this mapper was writing to
          DIR *Dir;
          struct dirent *DirEntry;
-         Dir = opendir(intermediate_directory);
+         Dir = opendir(intermediate_dir.c_str());
  
          //for each file in the directory, add the file to the list of files for the reducer working on that key
          while(DirEntry= readdir(Dir))
@@ -149,8 +152,8 @@ master::reducer_done(std::string job_id,std::string output_file)
 	 reducer_outputs[atoi(job_id.c_str())] = output_file;
          reducer_nodes.erase(job_id);
      }
-     if(reducers_nodes.empty())
-         pthread_signal_cond(&all_reducers_done);
+     if(reducer_nodes.empty())
+         pthread_cond_signal(&all_reducers_done);
      pthread_mutex_unlock(&map_m);
      return 0;
 }
@@ -165,20 +168,20 @@ void
 sort_master::merge(std::string output_file){
 
   //open output file
-  fstream outfile(output_file);
+  std::fstream outfile(output_file.c_str());
 
   //iterate through reducer_outputs map
   std::map <unsigned, std::string>::iterator it;
   //TODO ensure that the keys are sorted
   for(it = reducer_outputs.begin();it!=reducer_outputs.end();it++){
     //write each file to the output file
-    ifstream ifs ( reducer_outputs[*it] , ifstream::in );
+    std::ifstream ifs ( reducer_outputs[it->first].c_str()  );
     char *buf;
     while(ifs.good()){
       ifs.read(buf,256);
       outfile << buf;
     }
-    ifs.close()
+    ifs.close();
   }
 
 

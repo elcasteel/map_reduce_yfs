@@ -13,9 +13,9 @@
 #include "master.h"
 #include <map>
 
-class node:config_view_change{
+class node:public config_view_change{
 
-private:
+protected:
 config *cfg;
 std::string primary;
 std::string myid;
@@ -41,8 +41,9 @@ threaded_queue<rpc_call> rpc_queue;
 unsigned last_master_id;
 pthread_mutex_t map_mutex; 
 
-virtual mapper get_mapper() = 0;
-virtual reducer get_reducer() =0;
+virtual mapper* get_mapper(std::string input_file, std::string intermediate_dir) = 0;
+virtual reducer* get_reducer() =0;
+virtual master* get_master(config* cfg, unsigned master_id);
 node(std::string first,std::string me);
 void commit_change(unsigned vid);
 
@@ -83,5 +84,10 @@ struct do_reduce_args
 
 };
 
-
+class sort_node:node
+{
+mapper* get_mapper(std::string input_file, std::string intermediate_dir);
+reducer* get_reducer();
+master* get_master(config *cfg, unsigned master_id);
+};
 #endif

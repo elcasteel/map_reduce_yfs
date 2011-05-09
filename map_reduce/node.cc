@@ -32,11 +32,12 @@ node::start_map_reduce(std::string input_file, std::string output_file, int &a)
   ScopedLock ml(&map_mutex);
   //make a new master and add it to the map
   last_master_id++; 
-  master* m = new master(cfg, last_master_id);
+  master* m = get_master(cfg, last_master_id);
   master_map[last_master_id]=m;
   //give up the lock
-
+  last_master_id ++;
  }
+  
   //start the map reduce
   m->map_reduce(input_file,output_file);
   //return when the job is done
@@ -56,7 +57,7 @@ node::start_map(std::string input_file, unsigned job_id, unsigned master_id, int
   VERIFY(r == 0);
   //setup a new thread and mapper object
   pthread th;
-  mapper* m =new mapper(input_file, intermediate_dir);
+  mapper* m =get_mapper(input_file, intermediate_dir);
   struct do_map_args args;
   args.m= m;
   args.job_id = job_id;
@@ -97,7 +98,7 @@ node::start_reduce(std::string file_list, std::string job_id,unsigned master_id,
     std::string output_file = outstream.str();
        
    //set up a new thread and reducer
-   reducer r* = new reducer();
+   reducer r* = get_reducer();
    struct do_reducer_args args;
    args.r =r; 
    args.job_id = job_id;
@@ -164,4 +165,20 @@ node::commit_change(unsigned vid)
     }
   }
    
+}
+mapper* 
+sort_node::get_mapper(std::string input_file,std::string intermediate_dir)
+{
+   return new sort_mapper(-100000, 100000, 10, input_file, intermediate_dir);
+}
+
+reducer*
+sort_node::get_reducer()
+{
+   return new sort_reducer();
+}
+master*
+sort_node::get_master(config* cfg, unsigned master_id)
+{
+   return new sort_master( cfg, master_id);
 }

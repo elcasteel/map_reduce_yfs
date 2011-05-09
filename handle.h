@@ -25,7 +25,7 @@
 
 #include <string>
 #include <vector>
-#include "rpc.h"
+#include "rpc/rpc.h"
 
 struct hinfo {
   rpcc *cl;
