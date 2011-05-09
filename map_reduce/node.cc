@@ -1,15 +1,7 @@
 #include "node.h"
 #include <dirent.h>
-void listenerthread(void *node_instance)
-{
-     node n = (node*)node_instance;
-     node->listen();
-}
-void outgoingthread(void *node_instance)
-{
-     node n = (node*)node_instance;
-     node->outgoing();
-}
+
+
 node::node(std::string first,std::string me){
   //init config
   myid = me;
