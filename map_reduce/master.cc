@@ -3,7 +3,7 @@
 #include "node.h"
 #include "dirent.h"
 
-master::master(class config *c, std::string _master_id){
+master::master(class config *c, unsigned _master_id){
   cfg = c;
   my_master_id = _master_id;
   pthread_mutex_init(&map_m);
@@ -103,10 +103,10 @@ master::start_reducers()
          handle h(node_id);
          rpcc *cl = h.safebind();
          unsigned key =*it;
-         std::string file = reducer_nodes[key];
+         std::string file_list = reducer_nodes[key];
          pthread_mutex_unlock(&map_m);
          if(cl){
-            ret = cl->call(node::JOB,node::REDUCE, file,key, my_master_id);
+            ret = cl->call(node::JOB,node::REDUCE, file_list,key, my_master_id);
          } else {
              printf("bind() failed\n");
           }
