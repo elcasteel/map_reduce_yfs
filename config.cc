@@ -52,13 +52,14 @@ config::config(std::string _first, std::string _me, config_view_change *_vc)
 {
   VERIFY (pthread_mutex_init(&cfg_mutex, NULL) == 0);
   VERIFY(pthread_cond_init(&config_cond, NULL) == 0);  
-
+  printf("starting config constructor %s\n",me.c_str());
   std::ostringstream ost;
   ost << me;
-
+  printf("made stringstream \n");
   acc = new acceptor(this, me == _first, me, ost.str());
+  printf("made acceptor \n");
   pro = new proposer(this, acc, me);
-
+  printf("made acceptor and proposor \n");
   // XXX hack; maybe should have its own port number
   pxsrpc = acc->get_rpcs();
   pxsrpc->reg(paxos_protocol::heartbeat, this, &config::heartbeat);
@@ -71,6 +72,7 @@ config::config(std::string _first, std::string _me, config_view_change *_vc)
       pthread_t th;
       VERIFY (pthread_create(&th, NULL, &heartbeatthread, (void *) this) == 0);
   }
+  printf("config done\n");
 }
 
 void

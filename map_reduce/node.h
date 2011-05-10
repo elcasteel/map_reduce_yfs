@@ -12,6 +12,7 @@
 #include "reducer.h"
 #include "master.h"
 #include <map>
+#include "../rsm_protocol.h"
 
 class node:public config_view_change{
 
@@ -21,13 +22,18 @@ std::string primary;
 std::string myid;
 pthread_mutex_t view_mutex;
 rpcs* rpc_server;
+viewstamp myvs;
+viewstamp last_myvs;
 unsigned vid_cur;
 public:
 
+rsm_protocol::status joinreq(std::string src, 
+			       rsm_protocol::joinres &r);
+bool join(std::string m);
 
 //rpc enums
 //enum CALL {JOB };
-enum job_type{ MAP=0x10001,REDUCE, MAP_REDUCE,MAP_DONE,REDUCE_DONE};
+enum job_type{ MAP=0x10001,REDUCE, MAP_REDUCE,MAP_DONE,REDUCE_DONE,JOINREQ};
  
 struct rpc_call{
         

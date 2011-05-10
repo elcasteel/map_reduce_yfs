@@ -114,3 +114,23 @@ if [ `mount | grep "$pwd/yfs2" | grep -v grep | wc -l` -ne 1 ]; then
     echo "Failed to mount YFS properly at ./yfs2"
     exit -1
 fi
+
+# make sure FUSE is mounted where we expect
+if [ `mount | grep "$pwd/yfs3" | grep -v grep | wc -l` -ne 1 ]; then
+    sh stop.sh
+    echo "Failed to mount YFS properly at ./yfs3"
+    exit -1
+fi
+# make sure FUSE is mounted where we expect
+if [ `mount | grep "$pwd/yfs4" | grep -v grep | wc -l` -ne 1 ]; then
+    sh stop.sh
+    echo "Failed to mount YFS properly at ./yfs4"
+    exit -1
+fi
+# make sure FUSE is mounted where we expect
+if [ `mount | grep "$pwd/yfs5" | grep -v grep | wc -l` -ne 1 ]; then
+    sh stop.sh
+    echo "Failed to mount YFS properly at ./yfs5"
+    exit -1
+fi
+
