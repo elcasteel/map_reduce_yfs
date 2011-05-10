@@ -10,17 +10,21 @@
 class reducer{
 
 public:
-virtual void reduce( std::vector<std::string> values,std::string output_file);
-virtual void parse_intermediate(std::string filename);
+virtual void reduce( std::vector<std::string> values,std::string output_file){}
+virtual void parse_intermediate(std::string filename){}
 void start_reduce(std::string input, std::string output);
 std::vector<std::string> values;
 void parse_file_list(std::string file_list);
+virtual ~reducer(){};
+ reducer(){}
 };
 
 class sort_reducer:public reducer
 {
+public:
+sort_reducer(){}
 void reduce( std::vector<std::string> values,std::string output_file);
 void parse_intermediate(std::string filename);
-  
+~sort_reducer(){}  
 };
 #endif

@@ -45,10 +45,10 @@ pthread_mutex_t map_mutex;
 
 virtual mapper* get_mapper(std::string input_file, std::string intermediate_dir) = 0;
 virtual reducer* get_reducer() =0;
-virtual master* get_master(config* cfg, unsigned master_id);
+virtual master* get_master(config* cfg, unsigned master_id)=0;
 node(std::string first,std::string me);
 void commit_change(unsigned vid);
-
+virtual ~node(){};
 //rpc handlers
 
 int start_map(std::string initial_data, unsigned job_id,unsigned master_id, int &a);
@@ -100,7 +100,7 @@ reducer* get_reducer();
 master* get_master(config *cfg, unsigned master_id);
 public:
 sort_node(std::string first,std::string me):node(first,me){}
-
+~sort_node(){}
 
 };
 

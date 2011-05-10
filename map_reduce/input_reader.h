@@ -17,8 +17,8 @@ std::string mydir;
 unsigned index, num_pieces;
 
 public:
-virtual std::string get_next_file();
-
+virtual std::string get_next_file(){}
+virtual ~input_reader(){};
 
 };
 
@@ -121,7 +121,7 @@ std::string get_next_file(){
 
 }
 
-
+~linesplit_input_reader(){}
 };
 
 #endif 

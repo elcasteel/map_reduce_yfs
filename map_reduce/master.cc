@@ -90,7 +90,12 @@ master::start_mappers()
 
     }
 }
-
+std::string 
+master::getMember()
+{
+   std::string member= "filler string";
+   return member;
+}
 void 
 master::start_reducers()
 {

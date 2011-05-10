@@ -9,7 +9,7 @@ LAB6GE=$(shell expr $(LAB) \>\= 6)
 LAB7GE=$(shell expr $(LAB) \>\= 7)
 LAB8GE=$(shell expr $(LAB) \>\= 8)
 
-CXXFLAGS =  -g -MMD -Wall -I. -I$(RPC) -DLAB=$(LAB) -DSOL=$(SOL) -D_FILE_OFFSET_BITS=64
+CXXFLAGS =  -g -MMD -Wall -I. -I$(RPC) -I./map_reduce -DLAB=$(LAB) -DSOL=$(SOL) -D_FILE_OFFSET_BITS=64
 FUSEFLAGS= -D_FILE_OFFSET_BITS=64 -DFUSE_USE_VERSION=25 -I/usr/local/include/fuse -I/usr/include/fuse
 ifeq ($(shell uname -s),Darwin)
 MACFLAGS= -D__FreeBSD__=10
@@ -114,10 +114,10 @@ test-lab-4-c:  $(patsubst %.c,%.o,$(test_lab_4-c)) rpc/librpc.a
 rsm_tester=rsm_tester.cc rsmtest_client.cc
 rsm_tester:  $(patsubst %.cc,%.o,$(rsm_tester)) rpc/librpc.a
 
-map_reduce/node = map_reduce/node_main.cc map_reduce/node.cc map_reduce/mapper.cc map_reduce/reducer.cc map_reduce/master.cc
+node = map_reduce/node_main.cc map_reduce/node.cc map_reduce/mapper.cc map_reduce/reducer.cc map_reduce/master.cc handle.cc config.cc paxos.cc log.cc
 map_reduce/node : $(patsubst %.cc,%.o,$(node)) rpc/librpc.a
 
-map_reduce/map_reduce_tester = map_reduce/job_main.cc
+map_reduce_tester = map_reduce/job_main.cc handle.cc map_reduce/node.cc
 map_reduce/map_reduce_tester : $(patsubst %.cc,%.o,$(map_reduce_tester)) rpc/librpc.a
 
 
