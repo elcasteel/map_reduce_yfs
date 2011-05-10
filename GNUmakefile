@@ -133,7 +133,7 @@ fuse.o: fuse.cc
 -include *.d
 -include rpc/*.d
 
-clean_files=rpc/rpctest rpc/*.o rpc/*.d rpc/librpc.a *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest test-lab-3-b test-lab-3-c rsm_tester map_reduce/node map_reduce/map_reduce_tester map_reduce/*.o
+clean_files=rpc/rpctest rpc/*.o rpc/*.d rpc/librpc.a *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest test-lab-3-b test-lab-3-c rsm_tester map_reduce/node map_reduce/map_reduce_tester map_reduce/*.o map_reduce/*.d
 .PHONY: clean handin
 clean: 
 	rm $(clean_files) -rf 
