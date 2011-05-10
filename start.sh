@@ -14,10 +14,28 @@ BASE_PORT=$[BASE_PORT+2000]
 EXTENT_PORT=$BASE_PORT
 YFS1_PORT=$[BASE_PORT+2]
 YFS2_PORT=$[BASE_PORT+4]
-LOCK_PORT=$[BASE_PORT+6]
+YFS3_PORT=$[BASE_PORT+6]
+YFS4_PORT=$[BASE_PORT+8]
+YFS5_PORT=$[BASE_PORT+10]
+
+
+LOCK_PORT=$[BASE_PORT+12]
+
+NODE_PORT1=$[BASE_PORT+14]
+
+NODE_PORT2=$[BASE_PORT+16]
+
+NODE_PORT3=$[BASE_PORT+18]
+
+NODE_PORT4=$[BASE_PORT+20]
+
+NODE_PORT5=$[BASE_PORT+22]
 
 YFSDIR1=$PWD/yfs1
 YFSDIR2=$PWD/yfs2
+YFSDIR3=$PWD/yfs3
+YFSDIR4=$PWD/yfs4
+YFSDIR5=$PWD/yfs5
 
 if [ "$LOSSY" ]; then
     export RPC_LOSSY=$LOSSY
@@ -63,6 +81,22 @@ mkdir $YFSDIR2 || exit 1
 sleep 1
 echo "starting ./yfs_client $YFSDIR2 $EXTENT_PORT $LOCK_PORT > yfs_client2.log 2>&1 &"
 ./yfs_client $YFSDIR2 $EXTENT_PORT $LOCK_PORT > yfs_client2.log 2>&1 &
+
+rm -rf $YFSDIR3
+mkdir $YFSDIR3 || exit 1
+sleep 1
+echo "starting ./yfs_client $YFSDIR3 $EXTENT_PORT $LOCK_PORT > yfs_client3.log 2>&1 &"
+./yfs_client $YFSDIR3 $EXTENT_PORT $LOCK_PORT > yfs_client3.log 2>&1 &
+rm -rf $YFSDIR4
+mkdir $YFSDIR4 || exit 1
+sleep 1
+echo "starting ./yfs_client $YFSDIR4 $EXTENT_PORT $LOCK_PORT > yfs_client4.log 2>&1 &"
+./yfs_client $YFSDIR4 $EXTENT_PORT $LOCK_PORT > yfs_client4.log 2>&1 &
+rm -rf $YFSDIR5
+mkdir $YFSDIR5 || exit 1
+sleep 1
+echo "starting ./yfs_client $YFSDIR5 $EXTENT_PORT $LOCK_PORT > yfs_client5.log 2>&1 &"
+./yfs_client $YFSDIR5 $EXTENT_PORT $LOCK_PORT > yfs_client5.log 2>&1 &
 
 sleep 2
 

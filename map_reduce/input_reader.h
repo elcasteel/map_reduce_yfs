@@ -17,7 +17,7 @@ std::string mydir;
 unsigned index, num_pieces;
 
 public:
-virtual std::string get_next_file(){}
+virtual std::string get_next_file(){VERIFY(0);}
 virtual ~input_reader(){};
 
 };

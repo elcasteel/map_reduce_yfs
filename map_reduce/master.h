@@ -28,8 +28,10 @@ std::map <unsigned, std::string> reducer_outputs;
 input_reader reader;
 virtual input_reader get_input_reader(std::string input_dir)=0;
 pthread_mutex_t map_m;
+unsigned vid;
 
 public:
+void set_vid(unsigned v){vid =v;}
 //receive done message from a mapper
 int mapper_done(unsigned job_id, std::string intermediate_dir);
 //receive done message from a reducer

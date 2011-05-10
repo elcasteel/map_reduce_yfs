@@ -21,7 +21,7 @@ std::string primary;
 std::string myid;
 pthread_mutex_t view_mutex;
 rpcs* rpc_server;
-
+unsigned vid_cur;
 public:
 
 

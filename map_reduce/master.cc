@@ -3,7 +3,7 @@
 #include "node.h"
 #include "dirent.h"
 #include "../handle.h"
-
+#include <stdlib.h>
 master::master(class config *c, unsigned _master_id){
   cfg = c;
   my_master_id = _master_id;
@@ -93,7 +93,9 @@ master::start_mappers()
 std::string 
 master::getMember()
 {
-   std::string member= "filler string";
+   std::vector<std::string> members = cfg->get_view(vid);
+   int index = rand()%(members.size()-1) +1;
+   std::string member= members[index];
    return member;
 }
 void 

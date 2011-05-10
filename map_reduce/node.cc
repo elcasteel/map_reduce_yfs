@@ -30,11 +30,15 @@ int
 node::start_map_reduce(std::string input_file, std::string output_file, int &a)
 {
  master *m;
+ unsigned cur_id;
  {
   ScopedLock ml(&map_mutex);
   //make a new master and add it to the map
   last_master_id++; 
+
   m = get_master(cfg, last_master_id);
+  cur_id= last_master_id;
+  m->set_vid(vid_cur);
   master_map[last_master_id]=m;
   //give up the lock
   last_master_id ++;
@@ -43,6 +47,11 @@ node::start_map_reduce(std::string input_file, std::string output_file, int &a)
   //start the map reduce
   m->map_reduce(input_file,output_file);
   //return when the job is done
+  {
+     ScopedLock ma(&map_mutex);
+     master_map.erase(cur_id);
+     delete m;
+  }
   return 1;
 }
 
@@ -153,10 +162,12 @@ node::reducer_done(unsigned master_id,std::string job_id, std::string output_fil
 void
 node::commit_change(unsigned vid)
 {
+  ScopedLock ml(&view_mutex);
+  ScopedLock ma(&map_mutex);
   std::vector<std::string> c = cfg->get_view(vid);
   std::vector<std::string> p = cfg->get_view(vid - 1);
   VERIFY (c.size() > 0);
-
+   vid_cur = vid;
   if (isamember(primary,c)) {
     tprintf("set_primary: primary stays %s\n", primary.c_str());
     return;
@@ -170,7 +181,14 @@ node::commit_change(unsigned vid)
       return;
     }
   }
-   
+
+  //set vid on all the masters
+  std::map <unsigned,master*>::iterator it;
+  for(it= master_map.begin(); it != master_map.end(); it++)
+  {
+      it->second->set_vid(vid);
+  }  
+ 
 }
 mapper* 
 sort_node::get_mapper(std::string input_file,std::string intermediate_dir)
