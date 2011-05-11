@@ -1,12 +1,12 @@
 #include <string>
 #include "node.h"
 #include "../handle.h"
-
+#include "../rpc/rpc.h"
 int
 main(int argc, char *argv[]){
 
   if(argc != 4){
-    fprintf(stderr, "Usage: %s [master:]port inputfile outputfile\n", argv[0]);
+    fprintf(stderr, " JOB Usage: %s [master:]port inputfile outputfile\n", argv[0]);
     exit(1);
   }
 

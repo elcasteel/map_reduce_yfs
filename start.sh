@@ -4,7 +4,7 @@ ulimit -c unlimited
 
 LOSSY=$1
 NUM_LS=$2
-
+NUM_N=0
 if [ -z $NUM_LS ]; then
     NUM_LS=0
 fi
@@ -21,15 +21,8 @@ YFS5_PORT=$[BASE_PORT+10]
 
 LOCK_PORT=$[BASE_PORT+12]
 
-NODE_PORT1=$[BASE_PORT+14]
+NODE_PORT=$[BASE_PORT+14]
 
-NODE_PORT2=$[BASE_PORT+16]
-
-NODE_PORT3=$[BASE_PORT+18]
-
-NODE_PORT4=$[BASE_PORT+20]
-
-NODE_PORT5=$[BASE_PORT+22]
 
 YFSDIR1=$PWD/yfs1
 YFSDIR2=$PWD/yfs2
@@ -133,4 +126,28 @@ if [ `mount | grep "$pwd/yfs5" | grep -v grep | wc -l` -ne 1 ]; then
     echo "Failed to mount YFS properly at ./yfs5"
     exit -1
 fi
-
+echo "num n = " 
+echo $NUM_N
+if [ $NUM_N -gt 1 ]; then
+    x=0
+    rm config
+    while [ $x -lt $NUM_N ]; do
+      port=$[NODE_PORT+2*x]
+      x=$[x+1]
+      echo $port >> config
+    done
+    x=0
+    while [ $x -lt $NUM_N ]; do
+      port=$[NODE_PORT+2*x]
+      x=$[x+1]
+      echo "starting ./map_reduce/node $NODE_PORT $port > node$x.log 2>&1 &"
+      ./map_reduce/node $NODE_PORT $port > node$x.log 2>&1 &
+      sleep 1
+    done
+else
+    echo "starting ./map_reduce/node $NODE_PORT > node.log 2>&1 &"
+    ./map_reduce/node $NODE_PORT > node.log 2>&1 &
+    sleep 1
+fi
+sleep 1
+python map_reduce/sort_gen.py

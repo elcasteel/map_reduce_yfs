@@ -104,7 +104,8 @@ node::start_map_reduce(std::string input_file, std::string output_file, int &a)
  {
   ScopedLock ml(&map_mutex);
   //make a new master and add it to the map
-  last_master_id++; 
+  last_master_id++;
+  tprintf("****NODE****\nmap_reduce starting a job \n"); 
 
   m = get_master(cfg, last_master_id);
   cur_id= last_master_id;
@@ -129,6 +130,7 @@ int
 node::start_map(std::string input_file, unsigned job_id, unsigned master_id, int &a)
 {
   //choose a file name for the output
+  tprintf("****NODE****\nnode starting a map job start_map \n");
   stringstream ss(stringstream::in);
   ss << input_file;
   ss << "-";
@@ -153,12 +155,16 @@ node::start_map(std::string input_file, unsigned job_id, unsigned master_id, int
 void *
 do_map(void* _args)
 {
+  tprintf("****NODE****\nnode starting a map job do_map (new thread) \n");
+
   struct do_map_args* args = (do_map_args*) _args;
   args->m->map();
   handle h(args->primary);
   rpcc *cl = h.safebind();
   if(cl){
      int r;
+     tprintf("****NODE****\nmap job done sending message to master \n");
+
      int ret = cl->call(node::MAP_DONE,args->master_id, args->output_dir, args->job_id, r);
    } else {
      tprintf("\nmap done call failed!\n");

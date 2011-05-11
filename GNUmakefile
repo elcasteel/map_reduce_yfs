@@ -43,7 +43,7 @@ lab4: yfs_client extent_server lock_server lock_tester test-lab-3-b\
 lab5: yfs_client extent_server lock_server test-lab-3-b test-lab-3-c
 lab6: lock_server rsm_tester
 lab7: lock_tester lock_server rsm_tester
-lab8: extent_server lock_server yfs_client map_reduce/node map_reduce/map_reduce_tester
+lab8: extent_server lock_server yfs_client map_reduce/node map_reduce/job_main
 
 hfiles1=rpc/fifo.h rpc/connection.h rpc/rpc.h rpc/marshall.h rpc/method_thread.h\
 	rpc/thr_pool.h rpc/pollmgr.h rpc/jsl_log.h rpc/slock.h rpc/rpctest.cc\
@@ -117,8 +117,9 @@ rsm_tester:  $(patsubst %.cc,%.o,$(rsm_tester)) rpc/librpc.a
 node = map_reduce/node_main.cc map_reduce/node.cc map_reduce/mapper.cc map_reduce/reducer.cc map_reduce/master.cc handle.cc config.cc paxos.cc log.cc
 map_reduce/node : $(patsubst %.cc,%.o,$(node)) rpc/librpc.a
 
-map_reduce_tester = map_reduce/job_main.cc handle.cc map_reduce/node.cc
-map_reduce/map_reduce_tester : $(patsubst %.cc,%.o,$(map_reduce_tester)) rpc/librpc.a
+job_main = map_reduce/job_main.cc map_reduce/node.cc handle.cc map_reduce/mapper.cc map_reduce/reducer.cc map_reduce/master.cc config.cc paxos.cc log.cc
+#map_reduce_tester = map_reduce/node_main.cc map_reduce/node.cc handle.cc 
+map_reduce/job_main : $(patsubst %.cc,%.o,$(job_main)) rpc/librpc.a
 
 
 %.o: %.cc
@@ -133,7 +134,7 @@ fuse.o: fuse.cc
 -include *.d
 -include rpc/*.d
 
-clean_files=rpc/rpctest rpc/*.o rpc/*.d rpc/librpc.a *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest test-lab-3-b test-lab-3-c rsm_tester map_reduce/node map_reduce/map_reduce_tester map_reduce/*.o map_reduce/*.d
+clean_files=rpc/rpctest rpc/*.o rpc/*.d rpc/librpc.a *.o *.d yfs_client extent_server lock_server lock_tester lock_demo rpctest test-lab-3-b test-lab-3-c rsm_tester map_reduce/node map_reduce/job_main map_reduce/*.o map_reduce/*.d
 .PHONY: clean handin
 clean: 
 	rm $(clean_files) -rf 

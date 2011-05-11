@@ -15,21 +15,28 @@ master::master(class config *c, unsigned _master_id){
 void 
 master::map_reduce(std::string input_file, std::string output_file){
   //get input reader
-  input_reader reader = get_input_reader(input_file);
-
+  tprintf("****MASTER****\nmaster starting a map job \n");
+  
+  input_reader* reader = get_input_reader(input_file);
+  tprintf("****MASTER****\ninput reader constructor returns \n");
   //iterate through files while calling mappers and filling in mapper table
   std::string inp_file;
   unsigned job_id = 0;
-  pthread_mutex_lock(&map_m);  
-  while((inp_file=reader.get_next_file())!=""){
+  pthread_mutex_lock(&map_m); 
+  tprintf("****MASTER****\n got map_m lock\n"); 
+  while((inp_file=reader->get_next_file())!=""){
+   printf("****MASTER**** got a file\n"); 
     mapper_nodes[job_id] = inp_file;
     job_id++;
 
   }
+  delete reader;
+  tprintf("****MASTER****\nmaster got %u jobs \n",job_id);
   
   int acquire_delay = 30;
   while(mapper_nodes.size())
   {
+     tprintf("****MASTER****\nstarting new mappers \n");
      //start mappers
      start_mappers();
      //wait on jobs to finish
@@ -37,9 +44,13 @@ master::map_reduce(std::string input_file, std::string output_file){
      clock_gettime(CLOCK_REALTIME, &tp);
      tp.tv_sec += acquire_delay;
      acquire_delay = acquire_delay *2;
+     tprintf("****MASTER****\nwaiting for mappers to finish \n");
+
      pthread_cond_timedwait(&all_mappers_done,&map_m,&tp);
   
   }
+  tprintf("****MASTER****\nmapping done \n");
+
   //start reducers
   acquire_delay = 30;
   while(reducer_nodes.size())
@@ -136,7 +147,7 @@ master::mapper_done(unsigned job_id, std::string intermediate_dir)
          Dir = opendir(intermediate_dir.c_str());
  
          //for each file in the directory, add the file to the list of files for the reducer working on that key
-         while(DirEntry= readdir(Dir))
+         while((DirEntry= readdir(Dir)))
          {
             reducer_nodes[DirEntry->d_name].append(intermediate_dir+"/"+DirEntry->d_name+"\n");
          }
@@ -165,9 +176,9 @@ master::reducer_done(std::string job_id,std::string output_file)
      return 0;
 }
 
-input_reader
+input_reader*
 sort_master::get_input_reader(std::string input_dir){
-  return linesplit_input_reader(input_dir,10);
+  return new linesplit_input_reader(input_dir,10);
 }
 
 

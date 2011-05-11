@@ -1,7 +1,7 @@
 #ifndef rsm_protocol_h
 #define rsm_protocol_h
 
-#include "rpc.h"
+#include "rpc/rpc.h"
 
 
 class rsm_client_protocol {
