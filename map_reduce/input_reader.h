@@ -49,7 +49,7 @@ linesplit_input_reader(std::string input_dir,unsigned pieces){
   while ((dirp = readdir(dp)) != NULL) {
       std::string fname = mydir+"/"+std::string(dirp->d_name); 
       init_files.push_back(fname);
-       r = stat(dirp->d_name,&stFileInfo); 
+       r = stat(fname.c_str(),&stFileInfo); 
        VERIFY(r);
        size_map[fname] = stFileInfo.st_size;
        off_total += stFileInfo.st_size;
@@ -112,7 +112,7 @@ std::string get_next_file(){
       printf("****INPUT_READER**** trying to read %d bytes from file offset %u\n", bytes-dataread);
       stream.read(buf,bytes-dataread);
       //increment data read
-      //printf("****INPUT_READER**** finished reading \n %s \n",buf);
+      printf("****INPUT_READER**** finished reading \n %s \n",buf);
       dataread = bytes;
       outfile << buf;
       //read line

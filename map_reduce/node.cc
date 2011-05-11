@@ -130,12 +130,14 @@ int
 node::start_map(std::string input_file, unsigned job_id, unsigned master_id, int &a)
 {
   //choose a file name for the output
-  tprintf("****NODE****\nnode starting a map job start_map \n");
-  stringstream ss(stringstream::in);
+  tprintf("****NODE**** \nnode starting a map job start_map %s %u\n", input_file.c_str(), job_id);
+  stringstream ss(stringstream::in|stringstream::out);
   ss << input_file;
   ss << "-";
   ss << job_id;
   std::string intermediate_dir = ss.str();
+  printf("****NODE**** making output directory for mapper %s \n",intermediate_dir.c_str());
+  fflush(stdout);
   int r= mkdir(intermediate_dir.c_str(), 0777);
   VERIFY(r == 0);
   //setup a new thread and mapper object
@@ -147,6 +149,7 @@ node::start_map(std::string input_file, unsigned job_id, unsigned master_id, int
   args.master_id = master_id; 
   args.output_dir = intermediate_dir;
   args.primary = primary;
+  printf("****NODE**** creating new thread\n");
   r = pthread_create(&th,NULL,&do_map,&args );
   VERIFY(r == 0); 
   //return 

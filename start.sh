@@ -4,7 +4,7 @@ ulimit -c unlimited
 
 LOSSY=$1
 NUM_LS=$2
-NUM_N=0
+NUM_N=5
 if [ -z $NUM_LS ]; then
     NUM_LS=0
 fi
