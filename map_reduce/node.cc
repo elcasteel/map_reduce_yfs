@@ -136,6 +136,8 @@ node::start_map(std::string input_file, unsigned job_id, unsigned master_id,std:
   ss << "/";
   ss << job_id;
   ss << "-mapper";
+  //append a random number so different mappers for the same job make different directories
+  ss << rand()%100;
   std::string intermediate_dir = ss.str();
   printf("****NODE**** making output directory for mapper %s \n",intermediate_dir.c_str());
   fflush(stdout);
@@ -152,6 +154,14 @@ node::start_map(std::string input_file, unsigned job_id, unsigned master_id,std:
   args->master_id = master_id; 
   args->output_dir = intermediate_dir;
   args->primary = primary;
+  std::vector<std::string> view = cfg->get_view(vid_cur);
+  if(myid == view[1] &&false)
+  {
+     tprintf("****NODE**** NOT REPLYING TO MASTER\n");
+     args->send_response= false;
+  }
+  else
+	args->send_response = true;
   printf("****NODE**** creating new thread\n");
   fflush(stdout);
   r = pthread_create(&th,NULL,&do_map,args );
@@ -170,11 +180,11 @@ do_map(void* _args)
   args->m->map();
   handle h(args->primary);
   rpcc *cl = h.safebind();
-  
+  //decide whether to crash
   if(cl){
      int r;
      tprintf("****NODE****\nmap job done sending message to master \n");
-
+     
      int ret = cl->call(node::MAP_DONE,args->master_id, args->output_dir, args->job_id, r);
    } else {
      tprintf("\nmap done call failed!\n");

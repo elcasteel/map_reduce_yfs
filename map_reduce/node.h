@@ -82,6 +82,7 @@ struct do_map_args
    unsigned master_id;
    std::string output_dir;
    std::string primary;
+   bool send_response;
 
 };
 struct do_reduce_args

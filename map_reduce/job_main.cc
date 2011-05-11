@@ -18,7 +18,7 @@ main(int argc, char *argv[]){
   rpcc *cl = h.safebind();
   if(cl){
      int r;
-     int ret = cl->call(node::MAP_REDUCE,input, output, r);
+     int ret = cl->call(node::MAP_REDUCE,input, output,r);
    } else {
      tprintf("\failed to start map reduce!\n");
      return 1;

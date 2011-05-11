@@ -39,12 +39,17 @@ master::map_reduce(std::string input_file, std::string output_file){
   delete reader;
   tprintf("****MASTER****\nmaster got %u jobs \n",job_id);
 
-  int acquire_delay = 30;
+  int acquire_delay = 5;
+  //create dir for mappers
+  std::string mapper_dir = my_dir+"/mapper_data";
+  int r= mkdir(mapper_dir.c_str(), 0777);
+  VERIFY(r == 0);
+  
   while(mapper_nodes.size())
   {
      tprintf("****MASTER****\nstarting new mappers \n");
      //start mappers
-     start_mappers();
+     start_mappers(mapper_dir);
      //wait on jobs to finish
      timespec tp;
      clock_gettime(CLOCK_REALTIME, &tp);
@@ -53,16 +58,22 @@ master::map_reduce(std::string input_file, std::string output_file){
      tprintf("****MASTER****\nwaiting for mappers to finish \n");
 
      pthread_cond_timedwait(&all_mappers_done,&map_m,&tp);
-  
+      
   }
   tprintf("****MASTER****\nmapping done \n");
 
+    //create dir for reducers
+    std::string reducer_dir = my_dir+"/reducer_data";
+     r= mkdir(reducer_dir.c_str(), 0777);
+    VERIFY(r == 0);
+
   //start reducers
-  acquire_delay = 30;
+  acquire_delay = 20;
   while(reducer_nodes.size())
-  {
+  { 
+    printf("starting reducers\n");
      //start reducers
-     start_reducers();
+     start_reducers(reducer_dir);
      //wait on jobs to finish
      timespec tp;
      clock_gettime(CLOCK_REALTIME, &tp);
@@ -82,12 +93,8 @@ master::map_reduce(std::string input_file, std::string output_file){
 }
 
 void 
-master::start_mappers()
+master::start_mappers(std::string mapper_dir)
 {
-    //create dir for mappers
-    std::string mapper_dir = my_dir+"/mapper_data";
-    int r= mkdir(mapper_dir.c_str(), 0777);
-    VERIFY(r == 0);
     //assume we are already holding map_mutex
     std::map <unsigned,std::string> ::iterator it;
     for(it=mapper_nodes.begin(); it!= mapper_nodes.end();it++)
@@ -103,7 +110,7 @@ master::start_mappers()
          pthread_mutex_unlock(&map_m);
          if(cl){
             int a;
-            int ret = cl->call(node::MAP, file,key, my_master_id,mapper_dir,a);
+            int ret = cl->call(node::MAP, file,key, my_master_id,mapper_dir,a,rpcc::to(500));
          } else {
              printf("bind() failed\n");
           }
@@ -120,12 +127,8 @@ master::getMember()
    return member;
 }
 void 
-master::start_reducers()
+master::start_reducers(std::string reducer_dir)
 {
-    //create dir for reducers
-    std::string reducer_dir = my_dir+"/reducer_data";
-    int r= mkdir(reducer_dir.c_str(), 0777);
-    VERIFY(r == 0);
     //assume we are already holding map_mutex
     std::map <std::string,std::string> ::iterator it;
     for(it=reducer_nodes.begin(); it!= reducer_nodes.end();it++)
@@ -172,6 +175,8 @@ master::mapper_done(unsigned job_id, std::string intermediate_dir)
 	//remove this job from the mapper_nodes map
         mapper_nodes.erase(job_id);
     }
+    else
+        printf("****MASTER duplicate job!\n");
     if(mapper_nodes.empty())
         pthread_cond_signal(&all_mappers_done); 
     pthread_mutex_unlock(&map_m);

@@ -42,7 +42,7 @@ sort_reducer::parse_intermediate(std::string input_file)
       convert >> cur;
       int check = atoi(line.c_str());
       if(check != cur || line == ""){
-        printf("***MAPPER*** got a bad curr\n");
+        printf("***REDUCER*** got a bad curr\n");
 
         continue;
       }
