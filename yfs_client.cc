@@ -242,7 +242,7 @@ yfs_client::readdir(inum dir,vector<dirent>& dir_vector)
 int
 yfs_client::get(inum inum, string& str)
 {
-  printf("\nGetting id %llu from extent server",inum);
+//  printf("\nGetting id %llu from extent server",inum);
   if(ec->get(inum,str)!=extent_protocol::OK){
      printf("\n failed to get from extent server");
      return NOENT;
@@ -254,7 +254,7 @@ yfs_client::get(inum inum, string& str)
 int
 yfs_client::put(inum inum, string str)
 {
-  printf("\nPutting id %llu to extent server",inum);
+  //printf("\nPutting id %llu to extent server",inum);
   if(ec->put(inum,str)!=extent_protocol::OK){
      printf("\n failed to put to extent server");
      return NOENT;

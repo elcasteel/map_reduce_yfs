@@ -115,10 +115,10 @@ std::string get_next_file(){
     }else{
       //read bytes-dataread from offset
       stream.seekg(curr_offset,std::ios::beg);
-      printf("****INPUT_READER**** trying to read %d bytes from file offset %u\n", bytes-dataread);
+      printf("****INPUT_READER**** trying to read %d bytes from file offset %u\n", bytes-dataread,curr_offset);
       stream.read(buf,bytes-dataread);
       //increment data read
-      printf("****INPUT_READER**** finished reading \n %s \n",buf);
+      //printf("****INPUT_READER**** finished reading \n %s \n",buf);
       dataread = bytes;
       outfile << buf;
       //read line

@@ -16,7 +16,7 @@ void
 master::map_reduce(std::string input_file, std::string output_file){
   //get input reader
   tprintf("****MASTER****\nmaster starting a map job \n");
-  
+  my_dir=input_file; 
   input_reader* reader = get_input_reader(input_file);
   tprintf("****MASTER****\ninput reader constructor returns \n");
   //iterate through files while calling mappers and filling in mapper table
@@ -63,10 +63,10 @@ master::map_reduce(std::string input_file, std::string output_file){
      tp.tv_sec += acquire_delay;
      acquire_delay = acquire_delay *2;
      pthread_cond_timedwait(&all_reducers_done,&map_m,&tp);
-  
+     printf("****MASTER**** woke up \n");
   }
 
-  
+   merge(output_file);
    pthread_mutex_unlock(&map_m);
 
   //return
@@ -127,7 +127,7 @@ master::start_reducers()
          pthread_mutex_unlock(&map_m);
          if(cl){
             int a; 
-           int ret = cl->call(node::REDUCE, file_list,key, my_master_id,a);
+           int ret = cl->call(node::REDUCE, file_list,key, my_master_id,my_dir,a);
          } else {
              printf("bind() failed\n");
           }
@@ -139,17 +139,20 @@ int
 master::mapper_done(unsigned job_id, std::string intermediate_dir)
 {
     pthread_mutex_lock(&map_m);
+    printf("****MASTER**** mapper %d has returned \n",job_id);
     if(mapper_nodes.find(job_id) != mapper_nodes.end())
     {
          //look up the directory this mapper was writing to
          DIR *Dir;
          struct dirent *DirEntry;
          Dir = opendir(intermediate_dir.c_str());
- 
+ 	 printf("****MASTER**** opened directory from mapper \n");
          //for each file in the directory, add the file to the list of files for the reducer working on that key
          while((DirEntry= readdir(Dir)))
          {
-            reducer_nodes[DirEntry->d_name].append(intermediate_dir+"/"+DirEntry->d_name+"\n");
+            
+	    reducer_nodes[DirEntry->d_name].append(intermediate_dir+"/"+DirEntry->d_name+"\n");
+            printf("****MASTER**** added new file for reducer %s\n",reducer_nodes[DirEntry->d_name].c_str());
          }
 
 	//remove this job from the mapper_nodes map
@@ -165,13 +168,17 @@ int
 master::reducer_done(std::string job_id,std::string output_file)
 {
      pthread_mutex_lock(&map_m);
+     printf("****MASTER**** reducer done\n");
      if(reducer_nodes.find(job_id) != reducer_nodes.end())
      {
 	 reducer_outputs[atoi(job_id.c_str())] = output_file;
          reducer_nodes.erase(job_id);
      }
-     if(reducer_nodes.empty())
+     if(reducer_nodes.empty()){
+         printf("****MASTER**** signaling reducers done\n");
          pthread_cond_signal(&all_reducers_done);
+     }
+     printf("****MASTER**** removed reducer reducer_nodes left %d\n",reducer_nodes.size());
      pthread_mutex_unlock(&map_m);
      return 0;
 }
@@ -186,21 +193,32 @@ void
 sort_master::merge(std::string output_file){
 
   //open output file
-  std::fstream outfile(output_file.c_str());
+  printf("****MASTER**** merging to %s\n",output_file.c_str());
+  fflush(stdout);
+  std::ofstream outfile(output_file.c_str());
 
   //iterate through reducer_outputs map
   std::map <unsigned, std::string>::iterator it;
   //TODO ensure that the keys are sorted
   for(it = reducer_outputs.begin();it!=reducer_outputs.end();it++){
     //write each file to the output file
+    printf("reading from %s \n",reducer_outputs[it->first].c_str());
     std::ifstream ifs ( reducer_outputs[it->first].c_str()  );
-    char *buf;
-    while(ifs.good()){
-      ifs.read(buf,256);
-      outfile << buf;
+    //ifs.seekg(0,std::ios::end);
+     //int size = ifs.tellg();
+    //char *buf=new char[size];
+    //ifs.seekg(0,std::ios::beg);
+     std::string line;
+     while(ifs.good()){
+      //ifs.read(buf,size);
+      std::getline(ifs,line);
+      printf("****MASTER**** read buf %s \n",line.c_str());
+      
+      outfile << line.c_str();
     }
     ifs.close();
   }
+  printf("****MASTER**** done merging \n");
 
 
 

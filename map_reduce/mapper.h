@@ -2,7 +2,7 @@
 #define MAPPER
 
 #include <string>
-
+#include <stdio.h>
 class mapper{
 protected:
 std::string input_file;
@@ -31,7 +31,7 @@ sort_mapper(int min, int max, unsigned k, std::string _input_file, std::string _
     _k = k;
    input_file = _input_file;
    output_dir = _output_dir;
-
+   printf("****SORT_MAPPER**** constructor returning \n");
 }
 void map();
 void emit_intermediate(std::string key, std::string value);

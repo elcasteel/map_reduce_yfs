@@ -143,27 +143,33 @@ node::start_map(std::string input_file, unsigned job_id, unsigned master_id, int
   //setup a new thread and mapper object
   pthread_t th;
   mapper* m =get_mapper(input_file, intermediate_dir);
-  struct do_map_args args;
-  args.m= m;
-  args.job_id = job_id;
-  args.master_id = master_id; 
-  args.output_dir = intermediate_dir;
-  args.primary = primary;
+  printf("****NODE**** created new mapper object\n");
+  fflush(stdout);
+  struct do_map_args* args= new do_map_args();
+  args->m= m;
+  args->job_id = job_id;
+  args->master_id = master_id; 
+  args->output_dir = intermediate_dir;
+  args->primary = primary;
   printf("****NODE**** creating new thread\n");
-  r = pthread_create(&th,NULL,&do_map,&args );
+  fflush(stdout);
+  r = pthread_create(&th,NULL,&do_map,args );
   VERIFY(r == 0); 
-  //return 
+  printf("thread created, returning \n");
   return 0;
 }
 void *
 do_map(void* _args)
 {
   tprintf("****NODE****\nnode starting a map job do_map (new thread) \n");
-
+  fflush(stdout);
   struct do_map_args* args = (do_map_args*) _args;
+  printf("****NODE*** cast arguments\n");
+  fflush(stdout);
   args->m->map();
   handle h(args->primary);
   rpcc *cl = h.safebind();
+  
   if(cl){
      int r;
      tprintf("****NODE****\nmap job done sending message to master \n");
@@ -173,16 +179,18 @@ do_map(void* _args)
      tprintf("\nmap done call failed!\n");
    }
    delete args->m;
-   
+   delete args;
    return 0;
 }
 
 int 
-node::start_reduce(std::string file_list, std::string job_id,unsigned master_id, int &a)
+node::start_reduce(std::string file_list, std::string job_id,unsigned master_id,std::string output_dir, int &a)
 {
+    printf("****NODE**** start reduce file list %s job_id %s \n",file_list.c_str(), job_id.c_str());
     //chose a file name for the output
-    stringstream outstream;
-    outstream << "./";
+    stringstream outstream(stringstream::in|stringstream::out);
+    outstream << output_dir;
+    outstream << "/";
     outstream << job_id;
     outstream << ".";
     outstream << master_id;
@@ -191,24 +199,25 @@ node::start_reduce(std::string file_list, std::string job_id,unsigned master_id,
        
    //set up a new thread and reducer
    reducer *r = get_reducer();
-   struct do_reduce_args args;
-   args.r =r; 
-   args.job_id = job_id;
-   args.master_id = master_id; 
-   args.output_file = output_file;
-   args.file_list = file_list;
-   args.primary = primary;
+   struct do_reduce_args* args=new do_reduce_args();
+   args->r =r; 
+   args->job_id = job_id;
+   args->master_id = master_id; 
+   args->output_file = output_file;
+   args->file_list = file_list;
+   args->primary = primary;
    pthread_t th;
-   pthread_create(&th,NULL, &do_reduce,&args);
+   pthread_create(&th,NULL, &do_reduce,args);
    return 0;
 }
 void *
 do_reduce(void *args)
 {
+   printf("****NODE**** do_reduce starting\n");
    struct do_reduce_args *r_args = (do_reduce_args*) args;
    //call reduce
    r_args->r->start_reduce(r_args->file_list,r_args->output_file);
-   
+   printf("****NODE**** reduce job returned, informing master \n"); 
    //send reduce done rpc
   handle h(r_args->primary);
   rpcc *cl = h.safebind();
@@ -219,6 +228,7 @@ do_reduce(void *args)
      tprintf("\nreduce done call failed!\n");
    }
   delete r_args->r;
+  delete args;
   return 0; 
 }
 
@@ -272,7 +282,7 @@ node::commit_change(unsigned vid)
 mapper* 
 sort_node::get_mapper(std::string input_file,std::string intermediate_dir)
 {
-   return new sort_mapper(-100000, 100000, 10, input_file, intermediate_dir);
+   return new sort_mapper(-10, 10, 10, input_file, intermediate_dir);
 }
 
 reducer*

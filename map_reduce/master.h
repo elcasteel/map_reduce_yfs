@@ -17,6 +17,7 @@ unsigned calls;
 time_t start_time;
 void start_mappers();
 void start_reducers();
+std::string my_dir;
 pthread_cond_t all_mappers_done;
 pthread_cond_t all_reducers_done;
 //map job_id -> input_dir
