@@ -151,5 +151,3 @@ else
 fi
 sleep 1
 python map_reduce/sort_gen.py
-sleep 2
-map_reduce/job_main $NODE_PORT yfs1 yfs1/output
