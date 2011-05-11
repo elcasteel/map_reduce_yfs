@@ -45,21 +45,27 @@ linesplit_input_reader(std::string input_dir,unsigned pieces){
   //fill in sizes as well as the file list
   struct stat stFileInfo; 
   int r;
-  off_t off_total = 0;
+  unsigned off_total = 0;
   while ((dirp = readdir(dp)) != NULL) {
       std::string fname = mydir+"/"+std::string(dirp->d_name); 
       init_files.push_back(fname);
-       r = stat(dirp->d_name,&stFileInfo); 
-       VERIFY(r);
-       size_map[fname] = stFileInfo.st_size;
-       off_total += stFileInfo.st_size;
+       //r = stat(dirp->d_name,&stFileInfo); 
+       //VERIFY(r);
+       //size_map[fname] = stFileInfo.st_size;
+       //off_total += stFileInfo.st_size;
+      std::ifstream is;
+      is.open(fname.c_str(),std::ios::binary);
+      //get length of file
+      is.seekg(0,std::ios::end);
+      size_map[fname] = is.tellg();
+      off_total += is.tellg();
   }
   printf("****INPUT_READER****\nfound %d files \n", init_files.size());
   closedir(dp);
   unsigned total = off_total;
   bytes = total/pieces;
   printf("****INPUT_READER**** setting bytes %u total %u \n",bytes,total);
-  printf("****INPUT_READER**** off_total %llu \n",off_total);
+  printf("****INPUT_READER**** off_total %lu \n",off_total);
   curr_offset = 0;
 }
 
