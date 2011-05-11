@@ -100,7 +100,7 @@ std::string get_next_file(){
     std::ifstream stream(init_files.back().c_str());
     printf("****INPUT_READER**** opened input file\n"); 
     stream.seekg(curr_offset,std::ios::beg);
-    while(stream.good() && dataread < bytes){
+    while(stream.good() && (dataread < bytes || index == num_pieces-1)){
       //get a line from this file
       std::getline(stream,line);
       dataread += (int) stream.tellg()-curr_offset;
