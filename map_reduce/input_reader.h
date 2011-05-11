@@ -28,13 +28,14 @@ private:
   std::map<std::string,off_t> size_map;
   unsigned bytes;
   int curr_offset;
+  std::string _output_dir;
 
 public:
-linesplit_input_reader(std::string input_dir,unsigned pieces){
+linesplit_input_reader(std::string input_dir,unsigned pieces,std::string output_dir){
   mydir = input_dir;
   num_pieces = pieces;
   index = 0;
-
+  _output_dir = output_dir;
   //store initial files
   DIR *dp;
   struct dirent *dirp;
@@ -43,7 +44,7 @@ linesplit_input_reader(std::string input_dir,unsigned pieces){
   }
 
   //fill in sizes as well as the file list
-  struct stat stFileInfo; 
+  //struct stat stFileInfo; 
   int r;
   unsigned off_total = 0;
   while ((dirp = readdir(dp)) != NULL) {
@@ -65,8 +66,12 @@ linesplit_input_reader(std::string input_dir,unsigned pieces){
   unsigned total = off_total;
   bytes = total/pieces;
   printf("****INPUT_READER**** setting bytes %u total %u \n",bytes,total);
-  printf("****INPUT_READER**** off_total %lu \n",off_total);
+  printf("****INPUT_READER**** off_total %u \n",off_total);
   curr_offset = 0;
+
+  //make dir
+  r= mkdir(output_dir.c_str(), 0777);
+  VERIFY(r == 0);
 }
 
 
@@ -76,7 +81,7 @@ std::string get_next_file(){
   if(index >= num_pieces) return "";
   //output file
   std::stringstream ss;
-  ss << mydir;
+  ss << _output_dir;
   ss << "/";
   ss << index;
   std::string name= ss.str();
@@ -86,54 +91,37 @@ std::string get_next_file(){
   
 
 
-
-  char *buf = new char[bytes];
+  std::string line;
   off_t dataread =0;
+
   while(dataread<bytes && init_files.size()){
     //inp file
     printf("****INPUT_READER**** opening %s \n",init_files.back().c_str());
     std::ifstream stream(init_files.back().c_str());
     printf("****INPUT_READER**** opened input file\n"); 
-    //check file size
-    if(size_map[init_files.back()]-curr_offset < bytes-dataread){
-      //read all from offset
-      stream.seekg(curr_offset,std::ios::beg);
-      printf("****INPUT_READER**** trying to read whole file %d bytes  \n", size_map[init_files.back()]);
-      stream.read(buf,size_map[init_files.back()]);
-      //increment dataread
-      dataread += size_map[init_files.back()];
-      //write to file
-      outfile << buf;
-
-      //change file & remove old
-      stream.close();
-      init_files.pop_back();
-
-     //reset offset
-     curr_offset = 0;
-     
-    }else{
-      //read bytes-dataread from offset
-      stream.seekg(curr_offset,std::ios::beg);
-      printf("****INPUT_READER**** trying to read %d bytes from file offset %u\n", bytes-dataread,curr_offset);
-      stream.read(buf,bytes-dataread);
-      //increment data read
-      //printf("****INPUT_READER**** finished reading \n %s \n",buf);
-      dataread = bytes;
-      outfile << buf;
-      //read line
-      stream.getline(buf,size_map[init_files.back()]);
-      outfile << buf;
-
-      //increment curr_offset 
-      curr_offset = stream.tellg();
-   
+    stream.seekg(curr_offset,std::ios::beg);
+    while(stream.good() && dataread < bytes){
+      //get a line from this file
+      std::getline(stream,line);
+      dataread += (int) stream.tellg()-curr_offset;
+      curr_offset = stream.tellg();      
+      outfile << line.c_str();
+      outfile << "\n";
     }
+    if(!stream.good()){
+       //we are done with this file
+       curr_offset = 0;
+       init_files.pop_back();
+
+    }
+    stream.close();
+   
 
     
 
 
   }
+  //outfile << "\n";
   index++;
   outfile.close();
   return name;

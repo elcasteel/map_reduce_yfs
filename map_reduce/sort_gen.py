@@ -9,7 +9,8 @@ def gen():
   file = open('yfs1/sort_data','w')
   for i in range(size):
     k = random.randint(min,max);
-    file.write(str(k)+"\n")
+    file.write(str(k))
+    file.write("\n");
   file.close()
 
 gen();

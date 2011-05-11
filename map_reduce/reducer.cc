@@ -1,5 +1,6 @@
 #include "reducer.h"
 #include <list>
+#include <stdlib.h>
 
 void
 reducer::start_reduce(std::string input, std::string output)
@@ -28,11 +29,24 @@ sort_reducer::parse_intermediate(std::string input_file)
  // std::vector<std::string> values;
   while( ifs.good() )
   {
+      //int cur;
+      //ifs >> cur;
+      //std::ostringstream value_stream; 
+      //value_stream << cur;
+      //values.push_back(value_stream.str());
       int cur;
-      ifs >> cur;
-      std::ostringstream value_stream; 
-      value_stream << cur;
-      values.push_back(value_stream.str());
+      std::string line;
+      std::getline(ifs,line);
+
+      std::stringstream convert(line);
+      convert >> cur;
+      int check = atoi(line.c_str());
+      if(check != cur || line == ""){
+        printf("***MAPPER*** got a bad curr\n");
+
+        continue;
+      }
+      values.push_back(line);
   }
   ifs.close();
   
@@ -60,6 +74,7 @@ sort_reducer::reduce(std::vector<std::string> values,std::string output_file)
   while(int_values.size())
   { 
      output_stream << int_values.front();
+     output_stream << "\n";
      int_values.pop_front();
   }
   output_stream.close();

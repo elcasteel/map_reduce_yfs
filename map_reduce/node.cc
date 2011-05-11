@@ -127,14 +127,15 @@ node::start_map_reduce(std::string input_file, std::string output_file, int &a)
 }
 
 int
-node::start_map(std::string input_file, unsigned job_id, unsigned master_id, int &a)
+node::start_map(std::string input_file, unsigned job_id, unsigned master_id,std::string output_dir, int &a)
 {
   //choose a file name for the output
   tprintf("****NODE**** \nnode starting a map job start_map %s %u\n", input_file.c_str(), job_id);
   stringstream ss(stringstream::in|stringstream::out);
-  ss << input_file;
-  ss << "-";
+  ss << output_dir.c_str();
+  ss << "/";
   ss << job_id;
+  ss << "-mapper";
   std::string intermediate_dir = ss.str();
   printf("****NODE**** making output directory for mapper %s \n",intermediate_dir.c_str());
   fflush(stdout);
@@ -228,7 +229,7 @@ do_reduce(void *args)
      tprintf("\nreduce done call failed!\n");
    }
   delete r_args->r;
-  delete args;
+  delete r_args;
   return 0; 
 }
 

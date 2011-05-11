@@ -17,7 +17,13 @@ master::map_reduce(std::string input_file, std::string output_file){
   //get input reader
   tprintf("****MASTER****\nmaster starting a map job \n");
   my_dir=input_file; 
-  input_reader* reader = get_input_reader(input_file);
+  //create directory for input_reader files
+  std::string input_reader_dir = my_dir+"/input_reader";
+  //leave actual mkdir call to input reader as it expects to only find input files in dir
+  //int r= mkdir(input_reader_dir.c_str(), 0777);
+  //VERIFY(r == 0);
+
+  input_reader* reader = get_input_reader(my_dir,input_reader_dir);
   tprintf("****MASTER****\ninput reader constructor returns \n");
   //iterate through files while calling mappers and filling in mapper table
   std::string inp_file;
@@ -32,7 +38,7 @@ master::map_reduce(std::string input_file, std::string output_file){
   }
   delete reader;
   tprintf("****MASTER****\nmaster got %u jobs \n",job_id);
-  
+
   int acquire_delay = 30;
   while(mapper_nodes.size())
   {
@@ -78,6 +84,10 @@ master::map_reduce(std::string input_file, std::string output_file){
 void 
 master::start_mappers()
 {
+    //create dir for mappers
+    std::string mapper_dir = my_dir+"/mapper_data";
+    int r= mkdir(mapper_dir.c_str(), 0777);
+    VERIFY(r == 0);
     //assume we are already holding map_mutex
     std::map <unsigned,std::string> ::iterator it;
     for(it=mapper_nodes.begin(); it!= mapper_nodes.end();it++)
@@ -93,7 +103,7 @@ master::start_mappers()
          pthread_mutex_unlock(&map_m);
          if(cl){
             int a;
-            int ret = cl->call(node::MAP, file,key, my_master_id,a);
+            int ret = cl->call(node::MAP, file,key, my_master_id,mapper_dir,a);
          } else {
              printf("bind() failed\n");
           }
@@ -112,6 +122,10 @@ master::getMember()
 void 
 master::start_reducers()
 {
+    //create dir for reducers
+    std::string reducer_dir = my_dir+"/reducer_data";
+    int r= mkdir(reducer_dir.c_str(), 0777);
+    VERIFY(r == 0);
     //assume we are already holding map_mutex
     std::map <std::string,std::string> ::iterator it;
     for(it=reducer_nodes.begin(); it!= reducer_nodes.end();it++)
@@ -127,7 +141,7 @@ master::start_reducers()
          pthread_mutex_unlock(&map_m);
          if(cl){
             int a; 
-           int ret = cl->call(node::REDUCE, file_list,key, my_master_id,my_dir,a);
+           int ret = cl->call(node::REDUCE, file_list,key, my_master_id,reducer_dir,a);
          } else {
              printf("bind() failed\n");
           }
@@ -184,8 +198,8 @@ master::reducer_done(std::string job_id,std::string output_file)
 }
 
 input_reader*
-sort_master::get_input_reader(std::string input_dir){
-  return new linesplit_input_reader(input_dir,10);
+sort_master::get_input_reader(std::string input_dir,std::string output_dir){
+  return new linesplit_input_reader(input_dir,10,output_dir);
 }
 
 
@@ -215,6 +229,7 @@ sort_master::merge(std::string output_file){
       printf("****MASTER**** read buf %s \n",line.c_str());
       
       outfile << line.c_str();
+      outfile << "\n";
     }
     ifs.close();
   }

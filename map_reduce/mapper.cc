@@ -19,11 +19,22 @@ std::ifstream ifs(input_file.c_str());
    {
 //read a value
       int cur;
-      ifs >> cur;
+      //ifs >> cur;
+      std::string line;
+      std::getline(ifs,line);
+      
+      std::stringstream convert(line);
+      convert >> cur;
+      int check = atoi(line.c_str());
+      if(check != cur || line == ""){
+        printf("***MAPPER*** got a bad curr\n");
+
+        continue;
+      }
 //decide which bucket
       
       int bucket = (cur-_min)/size;
-  //    printf("cur %d is going into bucket %d \n",cur,bucket);
+      printf("cur %d is going into bucket %d with line %s\n",cur,bucket,line.c_str());
 //put the value in the bucket with emit_intermediate
       std::stringstream out(std::stringstream::in|std::stringstream::out);
       out <<output_dir.c_str();
@@ -43,10 +54,10 @@ sort_mapper::emit_intermediate(std::string key, std::string value)
 {
     std::ofstream outfile(key.c_str(),std::ofstream::app);
     int value_int = atoi(value.c_str());
-   // printf("****MAPPER**** printing value to file %s %d\n",key.c_str(),value_int);
+    printf("****MAPPER**** printing value to file %s %d\n",key.c_str(),value_int);
     //value_stream >> value_int;
     outfile << value_int;  
-    outfile << " ";
+    outfile << "\n";
     outfile.close();
    
 }

@@ -57,7 +57,7 @@ void commit_change(unsigned vid);
 virtual ~node(){};
 //rpc handlers
 
-int start_map(std::string initial_data, unsigned job_id,unsigned master_id, int &a);
+int start_map(std::string initial_data, unsigned job_id,unsigned master_id, std::string output_dir,int &a);
 int start_reduce(std::string file_list, std::string job_id, unsigned master_id,std::string output_dir, int &a);
 int start_map_reduce(std::string input_file, std::string output_file,int &a);
 

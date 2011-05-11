@@ -27,7 +27,7 @@ std::map <std::string,std::string>reducer_nodes;
 //map key -> output file
 std::map <unsigned, std::string> reducer_outputs;
 //input_reader reader;
-virtual input_reader* get_input_reader(std::string input_dir)=0;
+virtual input_reader* get_input_reader(std::string input_dir,std::string output_dir)=0;
 pthread_mutex_t map_m;
 unsigned vid;
 
@@ -46,7 +46,7 @@ virtual ~master(){};
 
 class sort_master:public master{
 protected:
-   input_reader* get_input_reader(std::string input_dir);
+   input_reader* get_input_reader(std::string input_dir,std::string output_dir);
    void merge(std::string output_file);
 public:
    sort_master(class config *c,unsigned _master_id):master(c,_master_id){}
